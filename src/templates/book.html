@@ -10,20 +10,11 @@
       {{{bookPrice}}}
       {{{bookBuy}}}
     </div>
-    <div class="accordion">
-      <details open>
-        <summary class="label">Description</summary>
-        <div class="accordion__body prose">
+    <section class="book__description" aria-labelledby="description-title">
+      <h2 class="label" id="description-title">Description</h2>
+      <div class="prose">
 {{{bookDescription}}}
-        </div>
-      </details>
-      <details>
-        <summary class="label">Delivery and returns</summary>
-        <div class="accordion__body">
-          <p>What delivery costs and how long it takes: <a href="/delivery/">Delivery</a>.</p>
-          <p>How to cancel an order or return a book: <a href="/returns/">Returns and cancellations</a>.</p>
-        </div>
-      </details>
-    </div>
+      </div>
+    </section>
   </div>
 </article>

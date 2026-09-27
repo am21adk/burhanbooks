@@ -84,7 +84,7 @@ async function main() {
   /** @type {{ loc: string, lastmod: Date|null }[]} */
   const sitemap = [];
 
-  // Pages written by hand: home, contact, the policy pages and 404.
+  // Pages written by hand: home, contact and 404.
   for (const file of fs.readdirSync(path.join(SRC, 'pages')).filter((f) => f.endsWith('.html'))) {
     const sourceFile = path.join(SRC, 'pages', file);
     const { meta, body } = readFrontMatter(fs.readFileSync(sourceFile, 'utf8'), file);

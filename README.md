@@ -35,8 +35,8 @@ everywhere, the book from the seed file, the `NEEDS:` gaps visible, and the
 admin switched off because there's no Supabase behind it. The real site
 goes on Netlify.
 
-`NEEDS:` marks copy only the owner can supply (the tagline, contact details
-and the policy pages). Local builds list what's missing; **a production
+`NEEDS:` marks copy only the owner can supply (the tagline and the contact
+details). Local builds list what's missing; **a production
 build on Netlify fails until every gap is filled**, so the shop can't go live
 without them.
 

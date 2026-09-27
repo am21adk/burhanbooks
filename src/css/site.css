@@ -549,45 +549,15 @@ a:hover {
   color: var(--muted);
 }
 
-/* Description, delivery and returns: native disclosures, no script. */
+/* Description: under a small heading, below the hairline that ends the
+   buying block. */
 
-.accordion details {
-  border-bottom: 1px solid var(--line);
-}
-
-.accordion summary {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  min-height: var(--control-height);
-  padding: var(--space-3) 0;
-  list-style: none;
-  cursor: pointer;
-}
-
-.accordion summary::-webkit-details-marker {
-  display: none;
-}
-
-.accordion summary::after {
+.book__description h2 {
+  padding: var(--space-5) 0 var(--space-3);
   color: var(--muted);
-  font-family: var(--font-display);
-  font-size: var(--text-xl);
-  font-weight: 400;
-  letter-spacing: 0;
-  line-height: 1;
-  content: "+";
 }
 
-.accordion details[open] summary::after {
-  content: "–";
-}
-
-.accordion__body {
-  padding: 0 0 var(--space-5);
-}
-
-.accordion__body p:last-child {
+.book__description .prose p:last-child {
   margin-bottom: 0;
 }
 
