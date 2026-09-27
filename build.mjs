@@ -82,7 +82,6 @@ async function main() {
     robots: production ? '' : '<meta name="robots" content="noindex, nofollow">',
     navBooks: '',
     navCart: '',
-    navContact: '',
     navSearch: '',
   };
 
@@ -104,7 +103,6 @@ async function main() {
       bookList: isHome || meta.path === '/search/' ? renderBookList(books, covers) : '',
       navBooks: isHome ? ' aria-current="page"' : '',
       navCart: meta.path === '/cart/' ? ' aria-current="page"' : '',
-      navContact: meta.path === '/contact/' ? ' aria-current="page"' : '',
       navSearch: meta.path === '/search/' ? ' aria-current="page"' : '',
     };
     const html = renderPage({

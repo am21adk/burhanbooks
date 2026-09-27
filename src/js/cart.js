@@ -4,8 +4,8 @@
 // Checkout sends only addresses and copies, and /api/checkout prices them
 // again itself.
 //
-// On every page this shows how many books are in the cart beside the Cart
-// link, and the Cart link and Add to cart open the cart in a panel that
+// On every page this shows how many books are in the cart on the cart in
+// the header, and that cart and Add to cart open the cart in a panel that
 // slides in from the right. /cart/ shows the same cart as a page: it's
 // where the Cart link goes without the script, and where Stripe sends the
 // customer back to.
@@ -67,7 +67,7 @@ function addToCart(slug) {
 const copiesOf = (/** @type {string} */ slug) => readCart().find((l) => l.slug === slug)?.quantity ?? 0;
 const copies = (/** @type {number} */ n) => `${n} ${n === 1 ? 'copy' : 'copies'}`;
 
-/** The number beside the Cart link, on every page. */
+/** The number on the cart in the header, on every page. */
 function paintCount() {
   const count = readCart().reduce((sum, line) => sum + line.quantity, 0);
   for (const badge of document.querySelectorAll('[data-cart-count]')) {
@@ -75,8 +75,7 @@ function paintCount() {
     /** @type {HTMLElement} */ (badge).hidden = count === 0;
   }
   for (const link of document.querySelectorAll('[data-cart-link]')) {
-    if (count) link.setAttribute('aria-label', `Cart, ${count} ${count === 1 ? 'book' : 'books'}`);
-    else link.removeAttribute('aria-label');
+    link.setAttribute('aria-label', count ? `Cart, ${count} ${count === 1 ? 'book' : 'books'}` : 'Cart');
   }
 }
 

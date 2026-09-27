@@ -198,10 +198,13 @@ a:hover {
   }
 }
 
+/* Logo on the left, Books in the middle, then search and the cart on the
+   right, as on the old site. The outer columns share the room equally, so
+   Books stays centred on the page. */
 .site-header__inner {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  justify-content: space-between;
   gap: var(--space-3);
   max-width: var(--page-max);
   min-height: 70px;
@@ -210,7 +213,7 @@ a:hover {
 }
 
 .site-header__logo {
-  flex: none;
+  justify-self: start;
   padding: var(--space-1) 0;
 }
 
@@ -248,26 +251,49 @@ a:hover {
   text-decoration: underline;
 }
 
-/* The magnifier: opens the search panel, or /search/ without the script. */
-.site-nav a.site-nav__search {
-  justify-content: center;
-  min-width: 40px;
+/* The magnifier and the cart: each opens its panel, or goes to /search/
+   or /cart/ without the script. */
+.site-tools {
+  display: flex;
+  justify-self: end;
+  align-items: center;
 }
 
-.site-nav a.site-nav__search:hover,
-.site-nav a.site-nav__search[aria-current="page"] {
-  text-decoration: none;
-}
-
-/* How many books are in the cart, beside the Cart link. */
-.cart-count {
+.site-tool {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 20px;
-  height: 20px;
-  margin-left: var(--space-1);
-  padding: 0 6px;
+  width: 44px;
+  height: var(--control-height);
+  color: var(--ink);
+}
+
+.site-tool:hover {
+  color: var(--muted);
+}
+
+.site-tool[aria-current="page"]::after {
+  position: absolute;
+  right: 11px;
+  bottom: 6px;
+  left: 11px;
+  height: 1px;
+  background: currentColor;
+  content: "";
+}
+
+/* How many books are in the cart, on the cart's corner. */
+.cart-count {
+  position: absolute;
+  top: 5px;
+  right: -2px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
   border-radius: var(--radius-pill);
   background: var(--ink);
   color: var(--paper);
@@ -275,19 +301,15 @@ a:hover {
   letter-spacing: 0;
 }
 
-/* Three links, the count and the magnifier beside the logo, down to a
-   320px screen. */
+/* Down to a 320px screen. */
 @media (max-width: 599px) {
   .site-nav a {
     padding: 0 6px;
     font-size: var(--text-base);
   }
 
-  .cart-count {
-    min-width: 18px;
-    height: 18px;
-    margin-left: 4px;
-    padding: 0 5px;
+  .site-tool {
+    width: 40px;
   }
 }
 
@@ -298,33 +320,6 @@ a:hover {
 
   .site-header__logo img {
     width: 100px;
-  }
-
-  .site-nav a {
-    padding: 0 5px;
-  }
-}
-
-@media (max-width: 359px) {
-  .site-header__inner {
-    gap: var(--space-1);
-  }
-
-  .site-header__logo img {
-    width: 86px;
-  }
-
-  .site-nav a {
-    padding: 0 4px;
-    font-size: 0.9375rem;
-  }
-
-  .cart-count {
-    margin-left: 3px;
-  }
-
-  .site-nav a.site-nav__search {
-    min-width: 32px;
   }
 }
 

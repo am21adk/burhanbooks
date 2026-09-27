@@ -80,16 +80,19 @@ test('no invented social proof: no star ratings, review scores or "people viewin
   }
 });
 
-test('every page has Cart between Books and Contact, and the cart script', () => {
+test('every page’s header has Books, then the magnifier and the cart; Contact is in the footer only', () => {
   const run = build({});
   assert.equal(run.status, 0, run.stderr);
   const pages = ['index.html', 'cart/index.html', 'contact/index.html', '404.html', 'product/shii-theology-a-translation-of-kashf-al-murad/index.html'];
   for (const rel of pages) {
     const html = fs.readFileSync(path.join(ROOT, 'dist', rel), 'utf8');
-    assert.match(html, /<li><a href="\/"[^>]*>Books<\/a><\/li>\s*<li><a href="\/cart\/"[^>]*data-cart-link>Cart<span class="cart-count" data-cart-count hidden><\/span><\/a><\/li>\s*<li><a href="\/contact\/"/, rel);
+    const header = html.slice(html.indexOf('<header'), html.indexOf('</header>'));
+    assert.match(header, /<ul>\s*<li><a href="\/"[^>]*>Books<\/a><\/li>\s*<\/ul>/, rel);
+    assert.match(header, /<a class="site-tool" href="\/search\/"[^>]*aria-label="Search" data-search-open><svg [^]*<\/svg>\s*<\/a>\s*<a class="site-tool" href="\/cart\/"[^>]*aria-label="Cart" data-cart-link><svg [^]*<\/svg>\s*<span class="cart-count" data-cart-count hidden><\/span><\/a>/, rel);
+    assert.doesNotMatch(header, /\/contact\//, rel);
+    assert.match(html.slice(html.indexOf('<footer')), /<a href="\/contact\/">Contact<\/a>/, rel);
     assert.match(html, /<script type="module" src="\/js\/cart\.js"><\/script>/, rel);
     assert.match(html, /<script type="module" src="\/js\/search\.js"><\/script>/, rel);
-    assert.match(html, /<li><a class="site-nav__search" href="\/search\/"[^>]*aria-label="Search" data-search-open><svg /, rel);
   }
   for (const file of ['cart.js', 'search.js', 'panel.js', 'shared.js']) assert.ok(fs.existsSync(path.join(ROOT, 'dist', 'js', file)), file);
   const redirects = fs.readFileSync(path.join(ROOT, 'dist', '_redirects'), 'utf8');
