@@ -183,6 +183,7 @@ function bookVars(book, cover, { eager, sizes }) {
     : `<div class="book-cover book-cover--missing" role="img" aria-label="${escapeHtml(`No cover image for ${book.title}`)}"><span>${escapeHtml(book.title)}</span></div>`;
   return {
     bookTitle: book.title,
+    bookTitleHtml: keepHyphenatedWordsTogether(book.title),
     bookPath: book.path,
     bookCover: image,
     bookAuthor: book.author ? `<p class="book-author">${escapeHtml(book.author)}</p>` : '',
@@ -191,6 +192,15 @@ function bookVars(book, cover, { eager, sizes }) {
     bookPrice: book.onSale ? `<p class="book-price">${escapeHtml(/** @type {string} */ (book.price))}</p>` : '<p class="book-unavailable">Not on sale yet.</p>',
     bookBuy: book.onSale ? `<a class="button" href="${escapeHtml(/** @type {string} */ (book.paymentUrl))}">Buy</a>` : '',
   };
+}
+
+/**
+ * Escapes a title and stops short hyphenated names ("al-Murad") breaking
+ * across two lines at the hyphen. Long ones are left free to wrap.
+ * @param {string} title
+ */
+function keepHyphenatedWordsTogether(title) {
+  return escapeHtml(title).replace(/\S+-\S+/g, (word) => (word.length <= 20 ? `<span class="nowrap">${word}</span>` : word));
 }
 
 /** @param {{ loc: string, lastmod: Date|null }[]} entries */
