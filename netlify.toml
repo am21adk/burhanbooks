@@ -1,0 +1,20 @@
+# Netlify builds the site into dist/ and serves /api/publish from
+# netlify/functions. The build needs no packages (only Node's standard
+# library), so dev tools aren't installed there.
+#
+# Set in Netlify → Site configuration → Environment variables:
+#   SUPABASE_URL, SUPABASE_ANON_KEY   (the anon key is public by design)
+#   NETLIFY_BUILD_HOOK                (secret; used only by /api/publish)
+# Netlify sets CONTEXT and SITE_NAME itself. See README.md.
+
+[build]
+  command = "node build.mjs"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+  NPM_FLAGS = "--omit=dev"
+  PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD = "1"
+
+[functions]
+  directory = "netlify/functions"
