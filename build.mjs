@@ -22,7 +22,7 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { fill, readFrontMatter, partialLoader } from './lib/template.mjs';
 import { loadBookRows, normaliseBooks, publishCover } from './lib/books.mjs';
-import { CURRENCY, escapeHtml, keepHyphenatedWordsTogether } from './src/js/shared.js';
+import { CURRENCY, escapeHtml, keepHyphenatedWordsTogether, searchText } from './src/js/shared.js';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const SRC = path.join(ROOT, 'src');
@@ -83,13 +83,16 @@ async function main() {
     navBooks: '',
     navCart: '',
     navContact: '',
+    navSearch: '',
   };
 
   /** @type {{ loc: string, lastmod: Date|null }[]} */
   const sitemap = [];
 
-  // Pages written by hand: home, cart, contact and 404. "noindex: true" in
-  // a page's front matter keeps it out of search results and the sitemap.
+  // Pages written by hand: home, search, cart, contact and 404. "noindex:
+  // true" in a page's front matter keeps it out of search engines and the
+  // sitemap. Search lists every book, and its script hides those that don't
+  // match.
   for (const file of fs.readdirSync(path.join(SRC, 'pages')).filter((f) => f.endsWith('.html'))) {
     const sourceFile = path.join(SRC, 'pages', file);
     const { meta, body } = readFrontMatter(fs.readFileSync(sourceFile, 'utf8'), file);
@@ -98,10 +101,11 @@ async function main() {
     const noindex = is404 || meta.noindex === 'true';
     const vars = {
       ...shared,
-      bookList: isHome ? renderBookList(books, covers) : '',
+      bookList: isHome || meta.path === '/search/' ? renderBookList(books, covers) : '',
       navBooks: isHome ? ' aria-current="page"' : '',
       navCart: meta.path === '/cart/' ? ' aria-current="page"' : '',
       navContact: meta.path === '/contact/' ? ' aria-current="page"' : '',
+      navSearch: meta.path === '/search/' ? ' aria-current="page"' : '',
     };
     const html = renderPage({
       title: isHome ? site.name : `${meta.title} – ${site.name}`,
@@ -210,6 +214,7 @@ function bookVars(book, cover, { eager, priority = false, sizes }) {
     bookTitle: book.title,
     bookTitleHtml: keepHyphenatedWordsTogether(book.title),
     bookPath: book.path,
+    bookSearch: searchText([book.title, book.author, book.contributors].filter(Boolean).join(' ')),
     bookCover: image,
     bookAuthor: book.author ? `<p class="book-author label">${escapeHtml(book.author)}</p>` : '',
     bookContributors: book.contributors ? `<p class="book-contributors">${escapeHtml(book.contributors)}</p>` : '',
@@ -217,12 +222,11 @@ function bookVars(book, cover, { eager, priority = false, sizes }) {
     bookPrice: book.onSale ? `<p class="book-price">${escapeHtml(/** @type {string} */ (book.price))}</p>` : '<p class="book-unavailable">Not on sale yet.</p>',
     // A plain form, so the button still works before (or without) the cart
     // script: /cart/?add=… adds the book there. With the script, it adds the
-    // book without leaving the page.
+    // book and opens the cart panel over the page.
     bookBuy: book.onSale
       ? `<form class="add-to-cart" action="/cart/" method="get" data-add-to-cart>
         <input type="hidden" name="add" value="${escapeHtml(book.slug)}">
         <button class="button" type="submit">Add to cart</button>
-        <p class="add-to-cart__status" role="status" data-cart-status></p>
       </form>`
       : '',
   };

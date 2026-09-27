@@ -59,56 +59,83 @@ after(async () => {
   await build();
 });
 
-test('Add to cart stays on the book page, says what it did, and the Cart link counts it', async () => {
+const panel = () => page.getByRole('dialog', { name: 'Cart' });
+const panelLine = () => panel().locator('.cart-line', { hasText: BOOK });
+const focused = () => page.evaluate(() => document.activeElement?.id || document.activeElement?.textContent?.trim());
+const settled = () => page.evaluate(() => Promise.all(document.getAnimations().map((a) => a.finished)));
+
+test('Add to cart opens the cart over the page, from the right, and the Cart link counts it', async () => {
   await page.goto(`${BASE}/product/${SLUG}/`);
   assert.equal(await badge().isVisible(), false, 'no count while the cart is empty');
   await page.getByRole('button', { name: 'Add to cart' }).click();
-  await page.getByRole('status').getByText('Added to your cart.').waitFor();
+  await panel().waitFor();
+  await panel().getByText('Added to your cart.').waitFor();
+  await panelLine().waitFor();
+  assert.equal(await focused(), 'cart-panel-title', 'focus goes to the panel’s heading');
   assert.equal(await badge().textContent(), '1');
-  assert.equal(await page.getByRole('link', { name: 'Cart, 1 book' }).count(), 1);
+  await settled();
+  const box = await panel().boundingBox();
+  assert.ok(box && Math.round(box.x + box.width) === 1280 && box.width === 480, 'a 480px panel against the right edge');
+
+  await panel().getByRole('button', { name: 'Continue shopping' }).click();
+  await panel().waitFor({ state: 'hidden' });
+  assert.equal(await focused(), 'Add to cart', 'focus returns to the button that opened it');
+
   await page.getByRole('button', { name: 'Add to cart' }).click();
-  await page.getByText('Added. Your cart has 2 copies of this book.').waitFor();
+  await panelLine().locator('.quantity__value', { hasText: '2' }).waitFor();
   assert.equal(await badge().textContent(), '2');
-  assert.equal(new URL(page.url()).pathname, `/product/${SLUG}/`);
-  await shot('cart-book-added');
+  await shot('cart-panel');
+  await page.keyboard.press('Escape');
+  await panel().waitFor({ state: 'hidden' });
+  assert.equal(new URL(page.url()).pathname, `/product/${SLUG}/`, 'never left the book page');
 });
 
-test('the cart shows the book, its price and a subtotal; the quantity buttons keep focus', async () => {
-  await page.getByRole('link', { name: 'View cart' }).click();
-  await line().waitFor();
-  assert.equal(await line().locator('.cart-line__each').textContent(), '£18.99 each');
-  assert.equal(await line().locator('.cart-line__total').textContent(), '£37.98');
-  assert.match(await page.locator('.cart__subtotal').textContent() || '', /Subtotal\s+£37\.98/);
-  await shot('cart-two-copies');
+test('the Cart link opens the same panel on any page; a click on the dimmed page closes it', async () => {
+  await page.goto(`${BASE}/`);
+  await page.getByRole('link', { name: 'Cart, 2 books' }).click();
+  await panelLine().waitFor();
+  assert.equal(new URL(page.url()).pathname, '/');
+  await page.mouse.click(20, 450);
+  await panel().waitFor({ state: 'hidden' });
+});
 
-  await line().getByRole('button', { name: 'One more' }).click();
-  assert.equal(await line().locator('.quantity__value').textContent(), '3');
+test('in the panel, the quantity buttons keep focus and the subtotal follows; Checkout goes to the payment page', async () => {
+  await page.getByRole('link', { name: 'Cart, 2 books' }).click();
+  await panelLine().waitFor();
+  assert.equal(await panelLine().locator('.cart-line__each').textContent(), '£18.99 each');
+  assert.equal(await panelLine().locator('.cart-line__total').textContent(), '£37.98');
+
+  await panelLine().getByRole('button', { name: 'One more' }).click();
+  assert.equal(await panelLine().locator('.quantity__value').textContent(), '3');
   assert.equal(await page.evaluate(() => document.activeElement?.getAttribute('aria-label')), 'One more');
-  assert.match(await page.locator('.cart__subtotal').textContent() || '', /£56\.97/);
+  assert.match(await panel().locator('.cart__subtotal').textContent() || '', /£56\.97/);
   await page.getByText(`3 copies of ${BOOK}.`).waitFor();
 
-  await line().getByRole('button', { name: 'One fewer' }).click();
-  await line().getByRole('button', { name: 'One fewer' }).click();
-  assert.equal(await line().locator('.quantity__value').textContent(), '1');
-  assert.equal(await line().getByRole('button', { name: 'One fewer' }).getAttribute('aria-disabled'), 'true', 'can’t go below one: Remove does that');
-  await line().getByRole('button', { name: 'One fewer' }).click({ force: true });
-  assert.equal(await line().locator('.quantity__value').textContent(), '1');
+  await panelLine().getByRole('button', { name: 'One fewer' }).click();
+  await panelLine().getByRole('button', { name: 'One fewer' }).click();
+  assert.equal(await panelLine().locator('.quantity__value').textContent(), '1');
+  assert.equal(await panelLine().getByRole('button', { name: 'One fewer' }).getAttribute('aria-disabled'), 'true', 'can’t go below one: Remove does that');
+  await panelLine().getByRole('button', { name: 'One fewer' }).click({ force: true });
+  assert.equal(await panelLine().locator('.quantity__value').textContent(), '1');
   assert.equal(await badge().textContent(), '1');
-});
 
-test('Checkout goes to the payment page with the site’s price; Back keeps the cart', async () => {
   const sessions = stripeState.sessions.length;
-  await page.getByRole('button', { name: 'Checkout' }).click();
+  await panel().getByRole('button', { name: 'Checkout' }).click();
   await page.waitForURL(/\/__stripe\/pay/);
   assert.equal(stripeState.sessions.length, sessions + 1);
   const form = stripeState.sessions.at(-1);
   assert.equal(form?.get('line_items[0][quantity]'), '1');
   assert.equal(form?.get('line_items[0][price_data][unit_amount]'), '1899');
   assert.equal(form?.get('shipping_address_collection[allowed_countries][0]'), 'GB');
+});
+
+test('Back from the payment page lands on the cart page, with the cart as it was', async () => {
   await page.getByRole('link', { name: 'Back' }).click();
   await page.waitForURL(`${BASE}/cart/`);
   await line().waitFor();
+  assert.match(await page.locator('.cart__subtotal').textContent() || '', /Subtotal\s+£18\.99/);
   assert.equal(await badge().textContent(), '1');
+  await shot('cart-page');
 });
 
 test('paying empties the cart and says thank you', async () => {

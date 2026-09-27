@@ -32,6 +32,22 @@ export function keepHyphenatedWordsTogether(text) {
 }
 
 /**
+ * Text as search compares it: lower case, without accents, ‘ayn marks or
+ * apostrophes, and anything that isn't a letter or digit as one space. So
+ * "Shi‘i" finds "Shi’i" and "shii", and "Hilli" finds "Ḥillī".
+ * @param {string} text
+ */
+export function searchText(text) {
+  return String(text)
+    .normalize('NFKD')
+    .replace(/\p{M}/gu, '')
+    .replace(/[’‘'ʿʾ`]/g, '')
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .trim();
+}
+
+/**
  * Turns a title into a URL slug: "Shi’i Theology: A translation" → "shii-theology-a-translation".
  * Apostrophes and ‘ayn marks are dropped rather than turned into hyphens.
  * @param {string} title

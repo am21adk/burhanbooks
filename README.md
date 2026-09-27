@@ -7,11 +7,15 @@ hosted on Netlify, with a small admin for adding and editing books.
   They never call Supabase, so they keep working if it's down.
 - **Books** live in Supabase. The admin at `/admin/` edits them; pressing
   *Publish changes* rebuilds the site on Netlify (about a minute).
-- **Buying:** customers add books to a cart, kept in their own browser, and
-  pay on a Stripe Checkout page. `/api/checkout` prices the cart from the
+- **Buying:** customers add books to a cart, kept in their own browser, which
+  slides in from the right over the page (and is also a page at `/cart/`),
+  and pay on a Stripe Checkout page. `/api/checkout` prices the cart from the
   site's own list of books on sale (`books.json`, written by the build), so
   a book costs what its page says, then asks Stripe for the payment page.
   The site takes no card details itself.
+- **Search** drops down from the magnifier in the header and goes to
+  `/search/`, which lists every book and hides those that don't match the
+  words typed. Nothing is fetched: the list is built with the page.
 
 No runtime dependencies: the build and the two functions use only Node's
 standard library. `devDependencies` are checks and tests for this machine.
@@ -23,7 +27,7 @@ npm install                 # dev tools only
 node build.mjs              # → dist/, from src/data/books.seed.json
 node scripts/preview.mjs    # → http://localhost:8790 (admin at /admin/)
 node scripts/check.mjs      # HTML, types, links, colour tokens
-npm test                    # unit, build, database, publish, checkout, admin and cart tests
+npm test                    # unit, build, database, publish, checkout, admin, cart and search tests
 ```
 
 The preview server stands in for Supabase, Netlify and Stripe, so the admin
@@ -125,7 +129,9 @@ delete the old one. The admin page doesn't handle password-reset emails.
 | `src/partials/` | Layout, header, footer, book card |
 | `src/admin/` | The admin page, its script and styles, and a small Supabase client |
 | `src/js/shared.js` | Rules shared by the build, the admin, the cart and checkout |
-| `src/js/cart.js` | The cart: the count by the Cart link, Add to cart, the cart page |
+| `src/js/cart.js` | The cart: the count by the Cart link, Add to cart, the cart panel and page |
+| `src/js/search.js` | The search panel, and matching books on `/search/` |
+| `src/js/panel.js` | Opening and closing the cart and search panels |
 | `src/css/site.css` | All public styles, built on the tokens in `:root` |
 | `supabase/` | Tables, access rules, covers bucket, seed (run in the SQL editor) |
 | `netlify/functions/publish.mjs` | `/api/publish`: checks the admin, triggers the build hook |

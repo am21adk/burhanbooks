@@ -1,0 +1,17 @@
+---
+title: Search
+description: Search the books at Burhan Books by title, author or translator.
+path: /search/
+noindex: true
+---
+<h1 class="page-title">Search</h1>
+<form class="search-form" action="/search/" method="get" role="search">
+  <label class="visually-hidden" for="search-q">Search books</label>
+  <input class="search-form__input" id="search-q" type="search" name="q" placeholder="Title, author or translator" autocomplete="off" enterkeyhint="search">
+  <button class="search-form__submit" type="submit" aria-label="Search">{{> icon-search}}</button>
+</form>
+<p class="search-summary" role="status" data-search-summary></p>
+<noscript><p class="search-summary">Searching needs JavaScript, so here are all the books.</p></noscript>
+<div class="search-results" data-search-results>
+{{{bookList}}}
+</div>

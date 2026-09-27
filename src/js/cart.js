@@ -5,9 +5,12 @@
 // again itself.
 //
 // On every page this shows how many books are in the cart beside the Cart
-// link. On a book page it makes Add to cart work without leaving the page,
-// and on /cart/ it shows the cart.
+// link, and the Cart link and Add to cart open the cart in a panel that
+// slides in from the right. /cart/ shows the same cart as a page: it's
+// where the Cart link goes without the script, and where Stripe sends the
+// customer back to.
 import { MAX_QUANTITY, escapeHtml, formatPrice, keepHyphenatedWordsTogether, normaliseCart } from './shared.js';
+import { CLOSE_ICON, closeOnRequest, openPanel, panelsWork } from './panel.js';
 
 /** @typedef {{ slug: string, quantity: number }} Line */
 /**
@@ -77,70 +80,50 @@ function paintCount() {
   }
 }
 
-/* ---------- Book pages: Add to cart ---------- */
+/** @type {Promise<Map<string, CatalogueBook>>|null} */
+let catalogue = null;
 
-for (const form of document.querySelectorAll('form[data-add-to-cart]')) {
-  form.addEventListener('submit', (event) => {
-    event.preventDefault();
-    const slug = String(new FormData(/** @type {HTMLFormElement} */ (form)).get('add') || '');
-    const before = copiesOf(slug);
-    const now = addToCart(slug);
-    const status = form.querySelector('[data-cart-status]');
-    if (!status) return;
-    const message = now === before
-      ? `Your cart already has ${copies(MAX_QUANTITY)} of this book, the most one order can take.`
-      : now === 1 ? 'Added to your cart.' : `Added. Your cart has ${copies(now)} of this book.`;
-    status.innerHTML = `${escapeHtml(message)} <a href="${sitePath('/cart/')}">View cart</a>`;
-  });
+/** The books on sale, fetched once per page. */
+function loadBooks() {
+  catalogue ??= fetch(new URL('books.json', ROOT), { cache: 'no-cache' })
+    .then((response) => {
+      if (!response.ok) throw new Error(`books.json: ${response.status}`);
+      return /** @type {Promise<{ books: CatalogueBook[] }>} */ (response.json());
+    })
+    .then((data) => new Map(data.books.map((book) => [book.slug, book])))
+    .catch((error) => {
+      catalogue = null;
+      throw error;
+    });
+  return catalogue;
 }
 
-/* ---------- The cart page ---------- */
-
-/** @param {HTMLElement} root */
-async function startCartPage(root) {
-  const params = new URLSearchParams(location.search);
-  const heading = document.getElementById('cart-title');
-
-  // Stripe sends the customer back here once they've paid.
-  if (params.get('order') === 'placed') {
-    writeCart([]);
-    history.replaceState(null, '', location.pathname);
-    if (heading) heading.textContent = 'Thank you';
-    root.innerHTML = `<div class="cart__message"><p>Your order has been placed.</p>
-      <p><a class="button button--secondary" href="${sitePath('/')}">See all books</a></p></div>`;
-    return;
-  }
-  // Add to cart without the script on the book page lands here as ?add=….
-  const adding = params.get('add');
-  if (adding) {
-    addToCart(adding);
-    history.replaceState(null, '', location.pathname);
-  }
-
-  root.innerHTML = '<p class="cart__message">Loading your cart…</p>';
-  /** @type {Map<string, CatalogueBook>} */
-  let books;
-  try {
-    const response = await fetch(new URL('books.json', ROOT), { cache: 'no-cache' });
-    if (!response.ok) throw new Error(`books.json: ${response.status}`);
-    const catalogue = /** @type {{ books: CatalogueBook[] }} */ (await response.json());
-    books = new Map(catalogue.books.map((book) => [book.slug, book]));
-  } catch {
-    root.innerHTML = '<p class="cart__message">Your cart couldn’t load. Check your connection, then reload the page.</p>';
-    return;
-  }
+/**
+ * Draws a cart into root and handles its buttons. The page and the panel
+ * differ only in their headings and in what Continue shopping does: on the
+ * page it's a link home, in the panel it closes the panel.
+ * @param {HTMLElement} root
+ * @param {{ heading: HTMLElement|null, inPanel: boolean }} options
+ */
+function mountCart(root, { heading, inPanel }) {
+  /** @type {Map<string, CatalogueBook>|null} */
+  let books = null;
+  let notice = '';
+  const titleTag = inPanel ? 'h3' : 'h2';
+  const continueShopping = inPanel
+    ? '<button class="button button--secondary" type="button" data-close-panel>Continue shopping</button>'
+    : `<a class="button button--secondary" href="${sitePath('/')}">See all books</a>`;
 
   // Screen readers hear what each button did here; the cart itself is redrawn.
   const announcer = document.createElement('p');
   announcer.className = 'visually-hidden';
   announcer.setAttribute('role', 'status');
   root.after(announcer);
-  let notice = '';
 
   /** Takes out books that are no longer on sale, and says so once. */
   const currentLines = () => {
     const lines = readCart();
-    const kept = lines.filter((line) => books.has(line.slug));
+    const kept = lines.filter((line) => books?.has(line.slug));
     if (kept.length < lines.length) {
       writeCart(kept);
       notice = lines.length - kept.length === 1
@@ -152,7 +135,7 @@ async function startCartPage(root) {
 
   /** @param {Line} line */
   const lineHtml = (line) => {
-    const book = /** @type {CatalogueBook} */ (books.get(line.slug));
+    const book = /** @type {CatalogueBook} */ (books?.get(line.slug));
     const href = sitePath(book.path);
     const title = escapeHtml(book.title);
     const cover = book.cover
@@ -161,7 +144,7 @@ async function startCartPage(root) {
     return `<li class="cart-line" data-slug="${escapeHtml(line.slug)}">
       <a class="cart-line__cover tile" href="${href}" tabindex="-1" aria-hidden="true">${cover}</a>
       <div class="cart-line__body">
-        <h2 class="cart-line__title"><a href="${href}">${keepHyphenatedWordsTogether(book.title)}</a></h2>
+        <${titleTag} class="cart-line__title"><a href="${href}">${keepHyphenatedWordsTogether(book.title)}</a></${titleTag}>
         ${book.author ? `<p class="cart-line__author label">${keepHyphenatedWordsTogether(book.author)}</p>` : ''}
         <p class="cart-line__each">${formatPrice(book.pricePence)} each</p>
         <div class="cart-line__controls">
@@ -177,28 +160,52 @@ async function startCartPage(root) {
     </li>`;
   };
 
-  /** @param {string} [focus] a selector for what should have focus afterwards */
+  /** @param {number} subtotal */
+  const summaryHtml = (subtotal) => {
+    const totals = `<p class="cart__subtotal"><span>Subtotal</span> <span>${formatPrice(subtotal)}</span></p>
+      <p class="cart__note">Any delivery charge is added on the payment page, before you pay.</p>`;
+    const status = '<p class="cart__status" role="status" data-checkout-status></p>';
+    const checkout = '<button class="button" type="button" data-checkout>Checkout</button>';
+    return inPanel
+      ? `<div class="cart__summary">${totals}<div class="cart__actions">${continueShopping}${checkout}</div>${status}</div>`
+      : `<aside class="cart__summary" aria-labelledby="cart-summary-title">
+          <h2 class="label" id="cart-summary-title">Order summary</h2>
+          ${totals}${checkout}${status}
+          <p class="cart__continue"><a href="${sitePath('/')}">Continue shopping</a></p>
+        </aside>`;
+  };
+
+  /** @param {string} [focus] a selector inside the cart, or "heading" */
   const render = (focus) => {
+    if (!books) return;
     const lines = currentLines();
     const noticeHtml = notice ? `<p class="cart__notice">${escapeHtml(notice)}</p>` : '';
     notice = '';
     if (!lines.length) {
-      root.innerHTML = `${noticeHtml}<div class="cart__message"><p>Your cart is empty.</p>
-        <p><a class="button button--secondary" href="${sitePath('/')}">See all books</a></p></div>`;
+      root.innerHTML = `${noticeHtml}<div class="cart__message"><p>Your cart is empty.</p><p>${continueShopping}</p></div>`;
     } else {
-      const subtotal = lines.reduce((sum, line) => sum + /** @type {CatalogueBook} */ (books.get(line.slug)).pricePence * line.quantity, 0);
-      root.innerHTML = `${noticeHtml}
-        <ul class="cart__lines">${lines.map(lineHtml).join('')}</ul>
-        <aside class="cart__summary" aria-labelledby="cart-summary-title">
-          <h2 class="label" id="cart-summary-title">Order summary</h2>
-          <p class="cart__subtotal"><span>Subtotal</span> <span>${formatPrice(subtotal)}</span></p>
-          <p class="cart__note">Any delivery charge is added on the payment page, before you pay.</p>
-          <button class="button" type="button" data-checkout>Checkout</button>
-          <p class="cart__status" role="status" data-checkout-status></p>
-          <p class="cart__continue"><a href="${sitePath('/')}">Continue shopping</a></p>
-        </aside>`;
+      const subtotal = lines.reduce((sum, line) => sum + /** @type {CatalogueBook} */ (books?.get(line.slug)).pricePence * line.quantity, 0);
+      root.innerHTML = `${noticeHtml}<ul class="cart__lines">${lines.map(lineHtml).join('')}</ul>${summaryHtml(subtotal)}`;
     }
-    if (focus) /** @type {HTMLElement|null} */ (root.querySelector(focus) ?? heading)?.focus();
+    if (focus) /** @type {HTMLElement|null} */ ((focus === 'heading' ? null : root.querySelector(focus)) ?? heading)?.focus();
+  };
+
+  /**
+   * Draws the cart, fetching the list of books the first time.
+   * @param {{ message?: string, focus?: string }} [options]
+   */
+  const show = async ({ message = '', focus } = {}) => {
+    notice = message;
+    if (!books) {
+      root.innerHTML = '<p class="cart__message">Loading your cart…</p>';
+      try {
+        books = await loadBooks();
+      } catch {
+        root.innerHTML = '<p class="cart__message">Your cart couldn’t load. Check your connection, then try again.</p>';
+        return;
+      }
+    }
+    render(focus);
   };
 
   root.addEventListener('click', (event) => {
@@ -212,7 +219,7 @@ async function startCartPage(root) {
     const act = button.dataset.act;
     if (!row || !act) return;
     const slug = row.dataset.slug || '';
-    const title = books.get(slug)?.title ?? '';
+    const title = books?.get(slug)?.title ?? '';
     const lines = readCart();
     const index = lines.findIndex((l) => l.slug === slug);
     if (index === -1) return;
@@ -220,7 +227,7 @@ async function startCartPage(root) {
       lines.splice(index, 1);
       writeCart(lines);
       const next = lines[Math.min(index, lines.length - 1)];
-      render(next ? `[data-slug="${next.slug}"] .cart-line__title a` : '#cart-title');
+      render(next ? `[data-slug="${next.slug}"] .cart-line__title a` : 'heading');
       announcer.textContent = `Removed ${title}.`;
       return;
     }
@@ -251,7 +258,7 @@ async function startCartPage(root) {
       if (response.status === 409 && Array.isArray(body.unavailable)) {
         writeCart(readCart().filter((line) => !body.unavailable.includes(line.slug)));
         notice = String(body.message || '');
-        render('#cart-title');
+        render('heading');
         return;
       }
       if (response.status === 404 || response.status === 405) message = 'Checkout isn’t available on this copy of the site.';
@@ -264,13 +271,92 @@ async function startCartPage(root) {
     status.textContent = message;
   };
 
-  render();
   // Another tab changed the cart, or Back returned here from the payment page.
   window.addEventListener('storage', (event) => { if (event.key === KEY) render(); });
   window.addEventListener('pageshow', (event) => { if (event.persisted) render(); });
+
+  return { show };
 }
+
+/* ---------- The cart panel ---------- */
+
+/** @type {{ dialog: HTMLDialogElement, cart: ReturnType<typeof mountCart> }|null} */
+let panel = null;
+
+function cartPanel() {
+  if (panel) return panel;
+  const dialog = document.createElement('dialog');
+  dialog.className = 'panel cart-panel';
+  dialog.setAttribute('aria-labelledby', 'cart-panel-title');
+  dialog.innerHTML = `<div class="panel__header">
+      <h2 class="panel__title" id="cart-panel-title" tabindex="-1">Cart</h2>
+      <button class="panel__close" type="button" data-close-panel aria-label="Close cart">${CLOSE_ICON}</button>
+    </div>
+    <div class="cart cart--panel"></div>`;
+  document.body.append(dialog);
+  closeOnRequest(dialog);
+  const heading = /** @type {HTMLElement} */ (dialog.querySelector('.panel__title'));
+  panel = { dialog, cart: mountCart(/** @type {HTMLElement} */ (dialog.querySelector('.cart')), { heading, inPanel: true }) };
+  return panel;
+}
+
+/**
+ * @param {HTMLElement} opener
+ * @param {string} [message]
+ */
+function openCart(opener, message) {
+  const { dialog, cart } = cartPanel();
+  openPanel(dialog, opener);
+  /** @type {HTMLElement} */ (dialog.querySelector('.panel__title')).focus();
+  cart.show({ message });
+}
+
+/* ---------- Wiring ---------- */
 
 paintCount();
 window.addEventListener('storage', (event) => { if (event.key === KEY) paintCount(); });
-const cartRoot = document.querySelector('[data-cart]');
-if (cartRoot) startCartPage(/** @type {HTMLElement} */ (cartRoot));
+
+const cartPage = /** @type {HTMLElement|null} */ (document.querySelector('[data-cart]'));
+
+if (cartPage) {
+  const params = new URLSearchParams(location.search);
+  const heading = document.getElementById('cart-title');
+  if (params.get('order') === 'placed') {
+    // Stripe sends the customer back here once they've paid.
+    writeCart([]);
+    history.replaceState(null, '', location.pathname);
+    if (heading) heading.textContent = 'Thank you';
+    cartPage.innerHTML = `<div class="cart__message"><p>Your order has been placed.</p>
+      <p><a class="button button--secondary" href="${sitePath('/')}">See all books</a></p></div>`;
+  } else {
+    // Add to cart without the script lands here as ?add=….
+    const adding = params.get('add');
+    if (adding) {
+      addToCart(adding);
+      history.replaceState(null, '', location.pathname);
+    }
+    mountCart(cartPage, { heading, inPanel: false }).show();
+  }
+} else if (panelsWork) {
+  for (const link of document.querySelectorAll('[data-cart-link]')) {
+    link.addEventListener('click', (event) => {
+      const click = /** @type {MouseEvent} */ (event);
+      if (click.button !== 0 || click.metaKey || click.ctrlKey || click.shiftKey || click.altKey) return;
+      event.preventDefault();
+      openCart(/** @type {HTMLElement} */ (link));
+    });
+  }
+}
+
+for (const form of document.querySelectorAll('form[data-add-to-cart]')) {
+  form.addEventListener('submit', (event) => {
+    if (!panelsWork) return; // the form takes it to /cart/?add=… instead
+    event.preventDefault();
+    const slug = String(new FormData(/** @type {HTMLFormElement} */ (form)).get('add') || '');
+    const before = copiesOf(slug);
+    const now = addToCart(slug);
+    openCart(/** @type {HTMLElement} */ (form.querySelector('button')), now === before
+      ? `Your cart already has ${copies(MAX_QUANTITY)} of this book, the most one order can take.`
+      : 'Added to your cart.');
+  });
+}

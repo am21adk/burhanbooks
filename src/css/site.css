@@ -61,6 +61,7 @@
   --leading-tight: 1.15;
   --tracking-label: 0.14em;
   --ease: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  --slide: 300ms cubic-bezier(0.4, 0, 0.2, 1);
 
   --space-1: 5px;
   --space-2: 10px;
@@ -247,6 +248,17 @@ a:hover {
   text-decoration: underline;
 }
 
+/* The magnifier: opens the search panel, or /search/ without the script. */
+.site-nav a.site-nav__search {
+  justify-content: center;
+  min-width: 40px;
+}
+
+.site-nav a.site-nav__search:hover,
+.site-nav a.site-nav__search[aria-current="page"] {
+  text-decoration: none;
+}
+
 /* How many books are in the cart, beside the Cart link. */
 .cart-count {
   display: inline-flex;
@@ -263,7 +275,8 @@ a:hover {
   letter-spacing: 0;
 }
 
-/* Three links and the count beside the logo, down to a 320px screen. */
+/* Three links, the count and the magnifier beside the logo, down to a
+   320px screen. */
 @media (max-width: 599px) {
   .site-nav a {
     padding: 0 6px;
@@ -289,6 +302,29 @@ a:hover {
 
   .site-nav a {
     padding: 0 5px;
+  }
+}
+
+@media (max-width: 359px) {
+  .site-header__inner {
+    gap: var(--space-1);
+  }
+
+  .site-header__logo img {
+    width: 86px;
+  }
+
+  .site-nav a {
+    padding: 0 4px;
+    font-size: 0.9375rem;
+  }
+
+  .cart-count {
+    margin-left: 3px;
+  }
+
+  .site-nav a.site-nav__search {
+    min-width: 32px;
   }
 }
 
@@ -595,14 +631,6 @@ a:hover {
   color: var(--muted);
 }
 
-.add-to-cart__status {
-  font-size: var(--text-sm);
-}
-
-.add-to-cart__status:not(:empty) {
-  margin-top: var(--space-3);
-}
-
 /* Description: under a small heading, below the hairline that ends the
    buying block. */
 
@@ -720,6 +748,19 @@ a:hover {
   text-align: right;
 }
 
+/* On a narrow screen the line's total goes under its buttons, so the title
+   keeps enough width to read. */
+@media (max-width: 419px) {
+  .cart-line {
+    grid-template-columns: 72px minmax(0, 1fr);
+  }
+
+  .cart-line__total {
+    grid-column: 2;
+    text-align: left;
+  }
+}
+
 .quantity {
   display: inline-flex;
   align-items: center;
@@ -809,6 +850,262 @@ a:hover {
   margin: var(--space-4) 0 0;
   font-size: var(--text-sm);
   text-align: center;
+}
+
+/* Search */
+
+.search-form {
+  display: flex;
+  max-width: 560px;
+}
+
+.search-form__input {
+  flex: 1;
+  min-width: 0;
+  min-height: 56px;
+  padding: 0 var(--space-4);
+  border: 1px solid var(--line-strong);
+  border-right: 0;
+  border-radius: var(--radius) 0 0 var(--radius);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--text-lg);
+}
+
+.search-form__input:focus-visible {
+  outline-offset: -2px;
+}
+
+.search-form__input::placeholder {
+  color: var(--muted);
+  opacity: 1;
+}
+
+.search-form__submit {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  border: 1px solid var(--ink);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  background: var(--ink);
+  color: var(--paper);
+  cursor: pointer;
+}
+
+.search-summary {
+  margin: var(--space-4) 0 0;
+  color: var(--muted);
+}
+
+.search-results {
+  margin-top: var(--space-5);
+}
+
+/* Panels: the cart slides in from the right and search drops down from the
+   top, both over the dimmed page (src/js/panel.js). */
+
+/* The page stops scrolling behind an open panel, and is padded by the
+   scrollbar's width (set by panel.js) so it doesn't shift sideways. */
+html:has(.panel[open]) {
+  overflow: hidden;
+  padding-right: var(--scrollbar-width, 0);
+}
+
+.panel {
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+}
+
+.panel::backdrop {
+  background: var(--backdrop);
+}
+
+.panel[open]::backdrop {
+  animation: panel-fade-in var(--slide);
+}
+
+.panel.is-closing::backdrop {
+  animation: panel-fade-out var(--slide) forwards;
+}
+
+.panel__header {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-3) var(--space-3) var(--space-5);
+  border-bottom: 1px solid var(--line);
+}
+
+.panel__title {
+  font-size: var(--text-2xl);
+}
+
+.panel__close {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--control-height);
+  height: var(--control-height);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius);
+  background: none;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.panel__close:hover {
+  background: var(--surface);
+}
+
+.cart-panel {
+  inset: 0 0 0 auto;
+  width: min(480px, 100%);
+  height: 100%;
+}
+
+.cart-panel[open] {
+  display: flex;
+  flex-direction: column;
+  animation: panel-from-right var(--slide);
+}
+
+.cart-panel.is-closing {
+  animation: panel-to-right var(--slide) forwards;
+}
+
+.cart--panel {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  min-height: 0;
+}
+
+.cart--panel .cart__notice {
+  margin: var(--space-4) var(--space-5) 0;
+}
+
+.cart--panel .cart__message {
+  padding: var(--space-5);
+}
+
+.cart--panel .cart__lines {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 var(--space-5);
+  border-top: 0;
+}
+
+.cart--panel .cart-line:last-child {
+  border-bottom: 0;
+}
+
+.cart--panel .cart__summary {
+  position: static;
+  padding: var(--space-4) var(--space-5) var(--space-5);
+  border: 0;
+  border-top: 1px solid var(--line);
+  border-radius: 0;
+}
+
+/* Continue shopping and Checkout, side by side at the foot of the panel. */
+.cart__actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}
+
+.cart__summary .cart__actions .button {
+  margin: 0;
+  padding: 0 var(--space-3);
+}
+
+@media (max-width: 419px) {
+  .cart__actions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.search-panel {
+  inset: 0 0 auto;
+  width: 100%;
+  height: auto;
+}
+
+.search-panel[open] {
+  animation: panel-from-top var(--slide);
+}
+
+.search-panel.is-closing {
+  animation: panel-to-top var(--slide) forwards;
+}
+
+.search-panel__inner {
+  position: relative;
+  padding: var(--space-7) var(--gutter);
+}
+
+.search-panel .panel__close {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+}
+
+.search-panel__title {
+  margin-bottom: var(--space-5);
+  text-align: center;
+}
+
+.search-panel .search-form {
+  margin: 0 auto;
+}
+
+@keyframes panel-fade-in {
+  from { opacity: 0; }
+}
+
+@keyframes panel-fade-out {
+  to { opacity: 0; }
+}
+
+@keyframes panel-from-right {
+  from { transform: translateX(100%); }
+}
+
+@keyframes panel-to-right {
+  to { transform: translateX(100%); }
+}
+
+@keyframes panel-from-top {
+  from { transform: translateY(-100%); }
+}
+
+@keyframes panel-to-top {
+  to { transform: translateY(-100%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel[open],
+  .panel[open]::backdrop,
+  .panel.is-closing,
+  .panel.is-closing::backdrop {
+    animation: none;
+  }
 }
 
 /* Footer */
