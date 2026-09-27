@@ -127,6 +127,6 @@ test('the database refuses what the admin form refuses', async () => {
     'duplicate web address': `insert into public.books (slug, title) values ('${SLUG}', 'Copy')`,
   };
   for (const [label, sql] of Object.entries(bad)) {
-    await assert.rejects(db.query(sql), undefined, `should refuse: ${label}`);
+    await assert.rejects(db.query(sql), Error, `should refuse: ${label}`);
   }
 });
