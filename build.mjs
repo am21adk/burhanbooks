@@ -54,7 +54,8 @@ async function main() {
 
   copyDir(path.join(SRC, 'root'), DIST);
   copyDir(path.join(SRC, 'fonts'), path.join(DIST, 'fonts'));
-  copyDir(path.join(SRC, 'img'), path.join(DIST, 'img'), (rel) => !rel.startsWith(`books${path.sep}`));
+  // img/books is published per book by publishCover; img/source holds originals that aren't served.
+  copyDir(path.join(SRC, 'img'), path.join(DIST, 'img'), (rel) => !/^(books|source)[\\/]/.test(rel));
   const css = hashedCopy(path.join(SRC, 'css', 'site.css'), 'css');
 
   const covers = new Map();
