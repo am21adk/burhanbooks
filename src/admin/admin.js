@@ -523,6 +523,22 @@ window.addEventListener('beforeunload', (event) => {
     $('boot').textContent = 'This copy of the site isn’t connected to the book database, so the admin can’t be used here. It works on the real site once Supabase is set up (see the README).';
     return;
   }
+  if (typeof config.publishOnGitHub === 'string') {
+    // The GitHub Pages preview has no server to rebuild it, so publishing
+    // there means running its workflow on GitHub.
+    const link = document.createElement('a');
+    link.className = 'button button--secondary';
+    link.href = config.publishOnGitHub;
+    link.target = '_blank';
+    link.rel = 'noopener';
+    link.append('Publish on GitHub');
+    const opens = document.createElement('span');
+    opens.className = 'visually-hidden';
+    opens.textContent = ' (opens in a new tab)';
+    link.append(opens);
+    button('publish').replaceWith(link);
+    $('publish-note').textContent = 'This is the GitHub Pages preview. Saved changes appear here after you open Publish on GitHub, press Run workflow there, and wait a minute or two.';
+  }
   if (!db.user) {
     show('signin');
     return;

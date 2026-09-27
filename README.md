@@ -40,10 +40,12 @@ charged. Everything resets when the server stops.
 **Preview on GitHub Pages:** every push to `main` publishes the built pages
 to https://am21adk.github.io/burhanbooks/ (`.github/workflows/pages.yml`,
 built with `BASE_PATH=/burhanbooks`). It's a preview only: noindex
-everywhere, the book from the seed file (so "Not on sale yet" until it has a
-price), the `NEEDS:` gaps visible, and the admin and checkout switched off
-because there's no Supabase or Stripe behind it. The real site goes on
-Netlify.
+everywhere and the `NEEDS:` gaps visible. It reads the books from the shop's
+Supabase project, and its admin (https://am21adk.github.io/burhanbooks/admin/)
+signs in to it. GitHub Pages can't run the publish or checkout functions, so
+the preview's Publish button opens the workflow on GitHub instead (press
+**Run workflow**), and Checkout says it isn't available there. The real site
+goes on Netlify.
 
 `NEEDS:` marks copy only the owner can supply (the tagline and the contact
 details). Local builds list what's missing; **a production

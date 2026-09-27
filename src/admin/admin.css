@@ -1,6 +1,10 @@
 /* The admin, on the same tokens as the public site (site.css loads first). */
 
+/* The right-hand column of the site header, where the public pages have
+   search and the cart. */
 .admin-account {
+  grid-column: 3;
+  justify-self: end;
   display: flex;
   flex-wrap: wrap;
   align-items: center;

@@ -197,6 +197,29 @@ test('an expired sign-in goes back to the sign-in form with the reason', async (
   await page.getByRole('heading', { name: 'Admin sign in' }).waitFor();
 });
 
+test('on the GitHub Pages preview, Publish opens the workflow on GitHub instead', async () => {
+  const workflow = 'https://github.com/am21adk/burhanbooks/actions/workflows/pages.yml';
+  await build({ SUPABASE_URL: `${BASE}/supabase`, SUPABASE_ANON_KEY: 'local-preview-anon-key', PREVIEW_PUBLISH_URL: workflow });
+  await page.goto(`${BASE}/admin/`);
+  await page.getByLabel('Email').fill('admin@burhanbooks.test');
+  await page.getByLabel('Password').fill('preview');
+  await page.getByRole('button', { name: 'Sign in' }).click();
+  await page.getByRole('heading', { name: 'Books' }).waitFor();
+  const link = page.getByRole('link', { name: 'Publish on GitHub (opens in a new tab)' });
+  assert.equal(await link.getAttribute('href'), workflow);
+  assert.equal(await link.getAttribute('target'), '_blank');
+  assert.equal(await page.getByRole('button', { name: 'Publish changes' }).count(), 0);
+  assert.match(await page.locator('#publish-note').textContent() || '', /press Run workflow there/);
+  assert.ok(await page.locator('.admin-account').isVisible());
+  const account = await page.locator('.admin-account').boundingBox();
+  const publish = await link.boundingBox();
+  assert.ok(account && publish && Math.abs((account.x + account.width) - (publish.x + publish.width)) <= 1, 'Sign out lines up with the right edge of the page');
+  await page.getByRole('button', { name: 'Sign out' }).click();
+  await page.getByRole('heading', { name: 'Admin sign in' }).waitFor();
+  await build({ SUPABASE_URL: `${BASE}/supabase`, SUPABASE_ANON_KEY: 'local-preview-anon-key' });
+  await page.goto(`${BASE}/admin/`);
+});
+
 test('signing out returns to the sign-in form', async () => {
   await page.getByLabel('Email').fill('admin@burhanbooks.test');
   await page.getByLabel('Password').fill('preview');

@@ -257,6 +257,8 @@ function renderCatalogue(books, covers) {
  * The admin page gets its own Content-Security-Policy, the only one that
  * may talk to Supabase, and the public Supabase settings it needs. Without
  * them (a local build) it points at the preview server's stand-in.
+ * PREVIEW_PUBLISH_URL is set only for the GitHub Pages preview, which has
+ * no server to rebuild it: its Publish button goes there instead.
  * @param {string} css
  */
 function buildAdmin(css) {
@@ -269,7 +271,7 @@ function buildAdmin(css) {
     "default-src 'self'", `img-src 'self' data: blob:${origin}`, "font-src 'self'", "style-src 'self'", "script-src 'self'",
     `connect-src 'self'${origin}`, "object-src 'none'", "base-uri 'self'", "form-action 'self'",
   ].join('; ');
-  const config = JSON.stringify({ supabaseUrl, anonKey }).replace(/</g, '\\u003c');
+  const config = JSON.stringify({ supabaseUrl, anonKey, publishOnGitHub: env.PREVIEW_PUBLISH_URL || null }).replace(/</g, '\\u003c');
   const template = fs.readFileSync(path.join(SRC, 'admin', 'index.html'), 'utf8');
   write(path.join('admin', 'index.html'), fill(template, { siteName: site.name, css, csp, config }, partial, 'admin'));
   for (const file of ['admin.js', 'supabase.js', 'admin.css']) {

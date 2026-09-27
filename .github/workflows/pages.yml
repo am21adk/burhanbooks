@@ -3,9 +3,12 @@
 #
 # Only the built pages in dist/ are published, never the source, SQL, tests
 # or scripts. It's built like a Netlify deploy preview: noindex on every
-# page, the NEEDS: gaps shown, the book from src/data/books.seed.json, and
-# the admin switched off because there's no Supabase behind it here. The
-# real site, with the admin working, goes on Netlify (see the README).
+# page and the NEEDS: gaps shown. The books come from the shop's Supabase
+# project, and the admin at /burhanbooks/admin/ signs in to it. There's no
+# server here to rebuild the preview when the admin publishes, so its
+# Publish button links to this workflow: Run workflow rebuilds it. The real
+# site, with checkout and one-press publishing, goes on Netlify (see the
+# README).
 #
 # Needs Settings → Pages → Build and deployment → Source: GitHub Actions.
 name: Publish preview
@@ -41,6 +44,11 @@ jobs:
         run: node build.mjs
         env:
           BASE_PATH: /burhanbooks
+          # Both public by design: the anon key only does what the access
+          # rules in supabase/02_policies.sql allow a visitor or the admin.
+          SUPABASE_URL: https://bsclxknfzljcsurtaswx.supabase.co
+          SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJzY2x4a25memxqY3N1cnRhc3d4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA1NDIxMTIsImV4cCI6MjEwNjExODExMn0.6WgUVmFC0a3KhNBmTzME_Za2WdYPosw2Xt0z9lNPsqs
+          PREVIEW_PUBLISH_URL: ${{ github.server_url }}/${{ github.repository }}/actions/workflows/pages.yml
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
