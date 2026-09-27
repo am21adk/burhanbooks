@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const books = JSON.parse(fs.readFileSync(path.join(ROOT, 'src', 'data', 'books.seed.json'), 'utf8'));
-const columns = ['slug', 'title', 'author', 'contributors', 'description', 'price_pence', 'payment_url',
+const columns = ['slug', 'title', 'author', 'contributors', 'description', 'price_pence',
   'cover_url', 'cover_small_url', 'cover_width', 'cover_height', 'is_published', 'sort_order', 'updated_at'];
 
 /** Dollar-quoted, so apostrophes and quote marks in the copy need no escaping. */

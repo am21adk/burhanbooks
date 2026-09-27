@@ -22,7 +22,7 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { fill, readFrontMatter, partialLoader } from './lib/template.mjs';
 import { loadBookRows, normaliseBooks, publishCover } from './lib/books.mjs';
-import { escapeHtml } from './src/js/shared.js';
+import { CURRENCY, escapeHtml, keepHyphenatedWordsTogether } from './src/js/shared.js';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const SRC = path.join(ROOT, 'src');
@@ -62,6 +62,9 @@ async function main() {
   // img/books is published per book by publishCover; img/source holds originals that aren't served.
   copyDir(path.join(SRC, 'img'), path.join(DIST, 'img'), (rel) => !/^(books|source)[\\/]/.test(rel));
   const css = hashedCopy(path.join(SRC, 'css', 'site.css'), 'css');
+  // The cart script on every public page, and the rules it shares with the
+  // build, the admin and checkout.
+  copyDir(path.join(SRC, 'js'), path.join(DIST, 'js'));
 
   const covers = new Map();
   for (const book of books) covers.set(book.slug, await publishCover(book, { srcDir: SRC, distDir: DIST }));
@@ -78,22 +81,26 @@ async function main() {
     csp: CSP_PUBLIC,
     robots: production ? '' : '<meta name="robots" content="noindex, nofollow">',
     navBooks: '',
+    navCart: '',
     navContact: '',
   };
 
   /** @type {{ loc: string, lastmod: Date|null }[]} */
   const sitemap = [];
 
-  // Pages written by hand: home, contact and 404.
+  // Pages written by hand: home, cart, contact and 404. "noindex: true" in
+  // a page's front matter keeps it out of search results and the sitemap.
   for (const file of fs.readdirSync(path.join(SRC, 'pages')).filter((f) => f.endsWith('.html'))) {
     const sourceFile = path.join(SRC, 'pages', file);
     const { meta, body } = readFrontMatter(fs.readFileSync(sourceFile, 'utf8'), file);
     const isHome = meta.path === '/';
     const is404 = meta.path === '/404.html';
+    const noindex = is404 || meta.noindex === 'true';
     const vars = {
       ...shared,
       bookList: isHome ? renderBookList(books, covers) : '',
       navBooks: isHome ? ' aria-current="page"' : '',
+      navCart: meta.path === '/cart/' ? ' aria-current="page"' : '',
       navContact: meta.path === '/contact/' ? ' aria-current="page"' : '',
     };
     const html = renderPage({
@@ -102,10 +109,10 @@ async function main() {
       path: meta.path,
       body: fill(body, vars, partial, file),
       vars,
-      noindex: is404,
+      noindex,
     });
     write(is404 ? '404.html' : path.join(meta.path, 'index.html'), html);
-    if (!is404) {
+    if (!noindex) {
       const dates = [gitDate(sourceFile), ...(isHome ? books.map((b) => b.updatedAt) : [])].filter(Boolean);
       sitemap.push({ loc: meta.path, lastmod: dates.length ? new Date(Math.max(...dates.map(Number))) : null });
     }
@@ -128,6 +135,7 @@ async function main() {
     sitemap.push({ loc: book.path, lastmod: book.updatedAt });
   }
 
+  write('books.json', renderCatalogue(books, covers));
   write('sitemap.xml', renderSitemap(sitemap));
   write('robots.txt', production
     ? `User-agent: *\nDisallow: /admin/\n\nSitemap: ${site.url}/sitemap.xml\n`
@@ -207,17 +215,40 @@ function bookVars(book, cover, { eager, priority = false, sizes }) {
     bookContributors: book.contributors ? `<p class="book-contributors">${escapeHtml(book.contributors)}</p>` : '',
     bookDescription: book.descriptionHtml,
     bookPrice: book.onSale ? `<p class="book-price">${escapeHtml(/** @type {string} */ (book.price))}</p>` : '<p class="book-unavailable">Not on sale yet.</p>',
-    bookBuy: book.onSale ? `<a class="button" href="${escapeHtml(/** @type {string} */ (book.paymentUrl))}">Buy</a>` : '',
+    // A plain form, so the button still works before (or without) the cart
+    // script: /cart/?add=… adds the book there. With the script, it adds the
+    // book without leaving the page.
+    bookBuy: book.onSale
+      ? `<form class="add-to-cart" action="/cart/" method="get" data-add-to-cart>
+        <input type="hidden" name="add" value="${escapeHtml(book.slug)}">
+        <button class="button" type="submit">Add to cart</button>
+        <p class="add-to-cart__status" role="status" data-cart-status></p>
+      </form>`
+      : '',
   };
 }
 
 /**
- * Escapes a title and stops short hyphenated names ("al-Murad") breaking
- * across two lines at the hyphen. Long ones are left free to wrap.
- * @param {string} title
+ * What the cart and checkout read to price a cart: the books on sale, as the
+ * pages show them. Checkout (netlify/functions/checkout.mjs) reads this same
+ * file from the site, so a book is charged the price its page shows.
+ * @param {ReturnType<typeof normaliseBooks>} books
+ * @param {Map<string, Awaited<ReturnType<typeof publishCover>>>} covers
  */
-function keepHyphenatedWordsTogether(title) {
-  return escapeHtml(title).replace(/\S+-\S+/g, (word) => (word.length <= 20 ? `<span class="nowrap">${word}</span>` : word));
+function renderCatalogue(books, covers) {
+  const onSale = books.filter((book) => book.onSale).map((book) => {
+    const cover = covers.get(book.slug) ?? null;
+    return {
+      slug: book.slug,
+      title: book.title,
+      author: book.author,
+      path: book.path,
+      pricePence: book.pricePence,
+      cover: cover ? { src: cover.src, thumb: cover.thumb, width: cover.width, height: cover.height, alt: book.coverAlt } : null,
+    };
+  });
+  return `${JSON.stringify({ currency: CURRENCY, books: onSale }, null, 2)}
+`;
 }
 
 /**
@@ -242,8 +273,6 @@ function buildAdmin(css) {
   for (const file of ['admin.js', 'supabase.js', 'admin.css']) {
     fs.copyFileSync(path.join(SRC, 'admin', file), path.join(DIST, 'admin', file));
   }
-  fs.mkdirSync(path.join(DIST, 'js'), { recursive: true });
-  fs.copyFileSync(path.join(SRC, 'js', 'shared.js'), path.join(DIST, 'js', 'shared.js'));
 }
 
 /**
@@ -295,6 +324,7 @@ function renderHeaders() {
     ['/css/*', [['Cache-Control', year]]],
     ['/fonts/*', [['Cache-Control', 'public, max-age=2592000']]], // stable names, so not immutable
     ['/img/books/*', [['Cache-Control', year]]],
+    ['/books.json', [['Cache-Control', 'no-cache']]],
     ['/admin/*', [['X-Robots-Tag', 'noindex'], ['Cache-Control', 'no-cache']]],
   ];
   const blocks = rules.map(([pattern, headers]) => [pattern, .../** @type {string[][]} */ (headers).map(([k, v]) => `  ${k}: ${v}`)].join('\n'));
@@ -308,8 +338,9 @@ function renderHeaders() {
  * for the site redirects to burhanbooks.com, so there's one address.
  */
 function renderRedirects() {
-  const gone = ['/shop', '/product-category', '/basket', '/checkout', '/my-account', '/sample-page', '/uncategorised', '/category', '/author', '/feed', '/comments'];
+  const gone = ['/shop', '/product-category', '/my-account', '/sample-page', '/uncategorised', '/category', '/author', '/feed', '/comments'];
   const lines = ['# Old WordPress addresses → the nearest page on this site'];
+  for (const from of ['/basket', '/checkout']) lines.push(`${from}  /cart/  301`, `${from}/*  /cart/  301`);
   for (const from of gone) lines.push(`${from}  /  301`, `${from}/*  /  301`);
   if (production && env.SITE_NAME) lines.unshift(`https://${env.SITE_NAME}.netlify.app/*  ${site.url}/:splat  301!`);
   return `${lines.join('\n')}\n`;

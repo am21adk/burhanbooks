@@ -25,9 +25,7 @@ create table if not exists public.books (
   description text
     check (description is null or length(description) <= 20000),
   price_pence integer
-    check (price_pence is null or price_pence between 0 and 1000000),
-  payment_url text
-    check (payment_url is null or payment_url ~ '^https://[^\s/]+\.[^\s/]+(/\S*)?$'),
+    check (price_pence is null or price_pence between 1 and 1000000),
   cover_url text
     check (cover_url is null or cover_url ~ '^(https://|/img/books/)\S+$'),
   cover_small_url text

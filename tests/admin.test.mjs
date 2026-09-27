@@ -90,19 +90,16 @@ test('bad values are explained next to their fields and nothing is saved', async
   await page.getByRole('button', { name: `Edit ${BOOK}` }).click();
   await page.getByRole('heading', { name: `Edit “${BOOK}”` }).waitFor();
   await page.getByLabel(/Price in pounds/).fill('abc');
-  await page.getByLabel(/Payment link/).fill('http://buy.example.com/x');
   await page.getByRole('button', { name: 'Save' }).click();
-  await page.getByText('Check the 2 highlighted fields and save again.').waitFor();
+  await page.getByText('Check the highlighted field and save again.').waitFor();
   await page.getByText('Enter a price such as 18.99, or leave it empty.').waitFor();
-  await page.getByText('The payment link must start with https://').waitFor();
   assert.equal(await page.evaluate(() => document.activeElement?.id), 'f-price', 'focus moves to the first problem');
   assert.equal(await page.getByLabel(/Price in pounds/).getAttribute('aria-invalid'), 'true');
   await shot('admin-edit-errors');
 });
 
-test('saving a price and payment link, then publishing, puts the Buy button on the public page', async () => {
+test('saving a price, then publishing, puts Add to cart on the public page', async () => {
   await page.getByLabel(/Price in pounds/).fill('18.99');
-  await page.getByLabel(/Payment link/).fill('https://buy.stripe.com/test_preview');
   await page.getByRole('button', { name: 'Save' }).click();
   await page.getByText(`Saved “${BOOK}”. Press Publish changes to update the public site.`).waitFor();
   assert.equal(await page.locator('.admin-book', { hasText: BOOK }).locator('.admin-book__meta').textContent(), 'On the site · £18.99');
@@ -116,7 +113,10 @@ test('saving a price and payment link, then publishing, puts the Buy button on t
   for (let i = 0; i < 100 && state.rebuilding; i++) await new Promise((r) => setTimeout(r, 100));
   const html = fs.readFileSync(path.join(ROOT, 'dist', 'product', 'shii-theology-a-translation-of-kashf-al-murad', 'index.html'), 'utf8');
   assert.match(html, /<p class="book-price">£18\.99<\/p>/);
-  assert.match(html, /<a class="button" href="https:\/\/buy\.stripe\.com\/test_preview">Buy<\/a>/);
+  assert.match(html, /<form class="add-to-cart" action="\/cart\/" method="get" data-add-to-cart>/);
+  assert.match(html, /<button class="button" type="submit">Add to cart<\/button>/);
+  const catalogue = JSON.parse(fs.readFileSync(path.join(ROOT, 'dist', 'books.json'), 'utf8'));
+  assert.deepEqual(catalogue.books.map((/** @type {{ slug: string, pricePence: number }} */ b) => [b.slug, b.pricePence]), [['shii-theology-a-translation-of-kashf-al-murad', 1899]]);
   assert.doesNotMatch(html, /Not on sale yet/);
 });
 

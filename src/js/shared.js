@@ -8,6 +8,9 @@ export const LIMITS = { title: 200, author: 200, contributors: 300, description:
 
 export const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
+/** The most copies of one book a cart can hold; checkout enforces it too. */
+export const MAX_QUANTITY = 10;
+
 /** @param {string} value */
 export function escapeHtml(value) {
   return String(value)
@@ -16,6 +19,16 @@ export function escapeHtml(value) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
+}
+
+/**
+ * Escapes text and stops short hyphenated names ("al-Murad") breaking
+ * across two lines at the hyphen. Long ones are left free to wrap.
+ * @param {string} text
+ * @returns {string} HTML
+ */
+export function keepHyphenatedWordsTogether(text) {
+  return escapeHtml(text).replace(/\S+-\S+/g, (word) => (word.length <= 20 ? `<span class="nowrap">${word}</span>` : word));
 }
 
 /**
@@ -73,21 +86,11 @@ export function parsePrice(input) {
   return Math.round(Number(cleaned) * 100);
 }
 
-/** @param {string} url */
-export function isHttpsUrl(url) {
-  try {
-    const parsed = new URL(url);
-    return parsed.protocol === 'https:' && Boolean(parsed.hostname);
-  } catch {
-    return false;
-  }
-}
-
 /**
  * Checks a book as the admin form or the database would, and returns
  * human-readable problems keyed by field. An empty object means it's fine.
  * @param {{title?: string, slug?: string, author?: string|null, contributors?: string|null,
- *   description?: string|null, price_pence?: number|null, payment_url?: string|null}} book
+ *   description?: string|null, price_pence?: number|null}} book
  * @returns {Record<string, string>}
  */
 export function validateBook(book) {
@@ -104,17 +107,36 @@ export function validateBook(book) {
   if (book.contributors && book.contributors.length > LIMITS.contributors) problems.contributors = `Keep this line under ${LIMITS.contributors} characters.`;
   if (book.description && book.description.length > LIMITS.description) problems.description = `Keep the description under ${LIMITS.description.toLocaleString('en-GB')} characters.`;
 
-  if (book.price_pence != null && (!Number.isInteger(book.price_pence) || book.price_pence < 0 || book.price_pence > 1000000)) {
+  if (book.price_pence != null && (!Number.isInteger(book.price_pence) || book.price_pence < 1 || book.price_pence > 1000000)) {
     problems.price_pence = 'Enter a price such as 12.50, or leave it empty.';
   }
-  if (book.payment_url && !isHttpsUrl(book.payment_url)) problems.payment_url = 'The payment link must start with https://';
   return problems;
 }
 
 /**
- * A book can be bought only when it has both a price and a payment link.
- * @param {{price_pence?: number|null, payment_url?: string|null}} book
+ * A book can be added to the cart once it has a price.
+ * @param {{price_pence?: number|null}} book
  */
 export function isOnSale(book) {
-  return book.price_pence != null && Boolean(book.payment_url);
+  return book.price_pence != null && book.price_pence > 0;
+}
+
+/**
+ * Tidies a cart as a browser holds or sends it: one line per book, each a
+ * valid web address with a whole number of copies from 1 to MAX_QUANTITY.
+ * Anything else is dropped, so a damaged or hand-edited cart can't break
+ * the cart page or reach checkout.
+ * @param {unknown} items
+ * @returns {{ slug: string, quantity: number }[]}
+ */
+export function normaliseCart(items) {
+  if (!Array.isArray(items)) return [];
+  /** @type {Map<string, number>} */
+  const lines = new Map();
+  for (const item of items.slice(0, 100)) {
+    const { slug, quantity } = /** @type {{ slug?: unknown, quantity?: unknown }} */ (item ?? {});
+    if (typeof slug !== 'string' || !SLUG_PATTERN.test(slug) || !Number.isInteger(quantity) || /** @type {number} */ (quantity) < 1) continue;
+    lines.set(slug, Math.min(MAX_QUANTITY, (lines.get(slug) ?? 0) + /** @type {number} */ (quantity)));
+  }
+  return [...lines].map(([slug, quantity]) => ({ slug, quantity }));
 }

@@ -41,6 +41,8 @@ test('a production build (checked locally with the seed) is indexable and has no
   assert.match(robots, /Sitemap: https:\/\/burhanbooks\.com\/sitemap\.xml/);
   assert.doesNotMatch(fs.readFileSync(path.join(ROOT, 'dist', 'index.html'), 'utf8'), /name="robots"/);
   assert.match(fs.readFileSync(path.join(ROOT, 'dist', '404.html'), 'utf8'), /<meta name="robots" content="noindex">/);
+  assert.match(fs.readFileSync(path.join(ROOT, 'dist', 'cart', 'index.html'), 'utf8'), /<meta name="robots" content="noindex">/);
+  assert.doesNotMatch(fs.readFileSync(path.join(ROOT, 'dist', 'sitemap.xml'), 'utf8'), /\/cart\//, 'the cart is no page for search results');
   build({}); // leave dist/ as a normal local build
 });
 
@@ -75,6 +77,41 @@ test('no invented social proof: no star ratings, review scores or "people viewin
     const html = fs.readFileSync(page, 'utf8');
     assert.doesNotMatch(html, /out of 5|star.?rating|rating(value)?|aggregateRating|people[ _-]viewing|viewing[ _-](this|now)|number__of_people/i, `${path.relative(ROOT, page)} shows a rating or viewer count`);
   }
+});
+
+test('every page has Cart between Books and Contact, and the cart script', () => {
+  const run = build({});
+  assert.equal(run.status, 0, run.stderr);
+  const pages = ['index.html', 'cart/index.html', 'contact/index.html', '404.html', 'product/shii-theology-a-translation-of-kashf-al-murad/index.html'];
+  for (const rel of pages) {
+    const html = fs.readFileSync(path.join(ROOT, 'dist', rel), 'utf8');
+    assert.match(html, /<li><a href="\/"[^>]*>Books<\/a><\/li>\s*<li><a href="\/cart\/"[^>]*data-cart-link>Cart<span class="cart-count" data-cart-count hidden><\/span><\/a><\/li>\s*<li><a href="\/contact\/"/, rel);
+    assert.match(html, /<script type="module" src="\/js\/cart\.js"><\/script>/, rel);
+  }
+  assert.ok(fs.existsSync(path.join(ROOT, 'dist', 'js', 'shared.js')), 'the cart script’s rules are published beside it');
+  const redirects = fs.readFileSync(path.join(ROOT, 'dist', '_redirects'), 'utf8');
+  assert.match(redirects, /^\/basket  \/cart\/  301$/m);
+  assert.match(redirects, /^\/checkout\/\*  \/cart\/  301$/m);
+  assert.match(fs.readFileSync(path.join(ROOT, 'dist', '_headers'), 'utf8'), /\/books\.json\n  Cache-Control: no-cache/);
+});
+
+test('a book without a price shows no Add to cart, and isn’t in the list checkout prices from', () => {
+  const run = build({});
+  assert.equal(run.status, 0, run.stderr);
+  const book = fs.readFileSync(path.join(ROOT, 'dist', 'product', 'shii-theology-a-translation-of-kashf-al-murad', 'index.html'), 'utf8');
+  assert.match(book, /Not on sale yet\./);
+  assert.doesNotMatch(book, /Add to cart|data-add-to-cart/);
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(ROOT, 'dist', 'books.json'), 'utf8')), { currency: 'GBP', books: [] });
+});
+
+test('the delivery, returns, terms and privacy pages are gone, and nothing links to them', () => {
+  const run = build({});
+  assert.equal(run.status, 0, run.stderr);
+  for (const dir of ['delivery', 'returns', 'terms', 'privacy']) assert.equal(fs.existsSync(path.join(ROOT, 'dist', dir)), false, dir);
+  const html = fs.readdirSync(path.join(ROOT, 'dist'), { recursive: true, withFileTypes: true })
+    .filter((e) => e.isFile() && e.name.endsWith('.html'))
+    .map((e) => fs.readFileSync(path.join(e.parentPath, e.name), 'utf8')).join('\n');
+  assert.doesNotMatch(html, /href="\/(delivery|returns|terms|privacy)\//);
 });
 
 test('image widths are read from the file itself', () => {

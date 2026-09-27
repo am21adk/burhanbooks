@@ -83,7 +83,7 @@ function matches(params) {
   return (/** @type {Record<string, any>} */ row) => filters.every(([key, value]) => value.startsWith('eq.') && String(row[key]) === value.slice(3));
 }
 
-const COLUMNS = ['slug', 'title', 'author', 'contributors', 'description', 'price_pence', 'payment_url', 'cover_url', 'cover_small_url', 'cover_width', 'cover_height', 'is_published', 'sort_order'];
+const COLUMNS = ['slug', 'title', 'author', 'contributors', 'description', 'price_pence', 'cover_url', 'cover_small_url', 'cover_width', 'cover_height', 'is_published', 'sort_order'];
 
 /** @param {Record<string, any>} row @param {string|null} exceptId */
 function checkRow(row, exceptId) {
@@ -144,7 +144,7 @@ async function supabase(req, res, url) {
     if (req.method === 'POST') {
       if (!admin) { send(res, 403, { code: '42501', message: 'new row violates row-level security policy for table "books"' }); return true; }
       const body = JSON.parse((await readBody(req)).toString());
-      const row = { id: crypto.randomUUID(), author: null, contributors: null, description: null, price_pence: null, payment_url: null, cover_url: null, cover_small_url: null, cover_width: null, cover_height: null, is_published: false, sort_order: 0, ...pick(body), created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
+      const row = { id: crypto.randomUUID(), author: null, contributors: null, description: null, price_pence: null, cover_url: null, cover_small_url: null, cover_width: null, cover_height: null, is_published: false, sort_order: 0, ...pick(body), created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
       const problem = checkRow(row, null);
       if (problem) { send(res, problem.code === '23505' ? 409 : 400, problem); return true; }
       books.push(row);

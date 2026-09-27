@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { formatDescription, slugify, parsePrice, formatPrice, validateBook, isOnSale } from '../src/js/shared.js';
+import { formatDescription, slugify, parsePrice, formatPrice, validateBook, isOnSale, normaliseCart, MAX_QUANTITY } from '../src/js/shared.js';
 import { firstSentence } from '../lib/books.mjs';
 import { fill, readFrontMatter } from '../lib/template.mjs';
 
@@ -28,17 +28,30 @@ test('prices are read in pounds and stored in pence', () => {
   assert.equal(formatPrice(1250), '£12.50');
 });
 
-test('a book is on sale only with both a price and a payment link', () => {
-  assert.equal(isOnSale({ price_pence: 1200, payment_url: 'https://buy.stripe.com/x' }), true);
-  assert.equal(isOnSale({ price_pence: null, payment_url: 'https://buy.stripe.com/x' }), false);
-  assert.equal(isOnSale({ price_pence: 0, payment_url: null }), false);
+test('a book can go in the cart once it has a price', () => {
+  assert.equal(isOnSale({ price_pence: 1200 }), true);
+  assert.equal(isOnSale({ price_pence: null }), false);
+  assert.equal(isOnSale({}), false);
 });
 
 test('validation explains each problem in plain words', () => {
   assert.deepEqual(validateBook({ title: 'A', slug: 'a' }), {});
-  const problems = validateBook({ title: '', slug: 'Bad Slug', payment_url: 'http://example.com', price_pence: -1 });
-  assert.deepEqual(Object.keys(problems).sort(), ['payment_url', 'price_pence', 'slug', 'title']);
-  assert.match(problems.payment_url, /https:\/\//);
+  const problems = validateBook({ title: '', slug: 'Bad Slug', price_pence: -1 });
+  assert.deepEqual(Object.keys(problems).sort(), ['price_pence', 'slug', 'title']);
+  assert.match(problems.price_pence, /such as 12\.50/);
+  assert.ok(validateBook({ title: 'A', slug: 'a', price_pence: 0 }).price_pence, 'a price of £0 is refused: leave it empty instead');
+});
+
+test('a cart from the browser is tidied: one line per book, 1 to 10 copies, nothing strange', () => {
+  assert.equal(MAX_QUANTITY, 10);
+  assert.deepEqual(normaliseCart([{ slug: 'a', quantity: 2 }, { slug: 'b', quantity: 1 }, { slug: 'a', quantity: 3 }]), [{ slug: 'a', quantity: 5 }, { slug: 'b', quantity: 1 }]);
+  assert.deepEqual(normaliseCart([{ slug: 'a', quantity: 40 }]), [{ slug: 'a', quantity: 10 }]);
+  assert.deepEqual(normaliseCart([
+    { slug: 'a', quantity: 0 }, { slug: 'a', quantity: -1 }, { slug: 'a', quantity: 1.5 }, { slug: 'a', quantity: '2' },
+    { slug: 'Bad Slug', quantity: 1 }, { slug: '../x', quantity: 1 }, null, 'a', 5, { quantity: 1 },
+  ]), []);
+  assert.deepEqual(normaliseCart('not a list'), []);
+  assert.deepEqual(normaliseCart(null), []);
 });
 
 test('meta descriptions use the first sentence, word for word', () => {

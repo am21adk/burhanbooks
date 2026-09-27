@@ -4,7 +4,7 @@
 -- empty for the owner to add in the admin. Running this again never
 -- overwrites a book that's already there.
 
-insert into public.books (slug, title, author, contributors, description, price_pence, payment_url, cover_url, cover_small_url, cover_width, cover_height, is_published, sort_order, updated_at)
+insert into public.books (slug, title, author, contributors, description, price_pence, cover_url, cover_small_url, cover_width, cover_height, is_published, sort_order, updated_at)
 values
   ($seed$shii-theology-a-translation-of-kashf-al-murad$seed$,
    $seed$Shi’i Theology: A translation of Kashf al-Murad$seed$,
@@ -27,7 +27,6 @@ After relocating to Iran, al-Hilli debated scholars from the four Sunni schools 
 **Nasir al-Din al-Tusi** (1201-1274) was a distinguished Shi‘i philosopher, scientist, and theologian, and a towering figure in the realm of Islamic thought. Having endured the turbulent period of the Mongol conquests, al-Tusi later ascended to prominence as an advisor to the Mongol rulers, inspiring several of them to embrace Islam.
 
 As a polymath, al-Tusi made significant contributions to various fields, including mathematics, astronomy, and philosophy. He established the renowned Maragheh Observatory, which became a centre of scientific advancement during his time. An accomplished author, al-Tusi penned numerous books, further solidifying his reputation as one of the most influential thinkers in Islamic history.$seed$,
-   null,
    null,
    $seed$/img/books/shii-theology-kashf-al-murad.jpg$seed$,
    $seed$/img/books/shii-theology-kashf-al-murad-300.jpg$seed$,

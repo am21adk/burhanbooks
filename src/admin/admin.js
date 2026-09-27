@@ -189,7 +189,7 @@ function renderBooks() {
     const meta = document.createElement('p');
     meta.className = 'admin-book__meta';
     const status = book.is_published ? 'On the site' : 'Draft, not on the site';
-    const sale = isOnSale(book) ? formatPrice(book.price_pence) : book.price_pence != null ? `${formatPrice(book.price_pence)}, no payment link yet` : 'No price yet';
+    const sale = isOnSale(book) ? formatPrice(/** @type {number} */ (book.price_pence)) : 'No price yet';
     meta.textContent = `${status} · ${sale}`;
     text.append(title, meta);
 
@@ -246,7 +246,7 @@ button('publish').addEventListener('click', async () => {
 
 const FIELDS = {
   title: 'f-title', slug: 'f-slug', author: 'f-author', contributors: 'f-contributors',
-  description: 'f-description', price_pence: 'f-price', payment_url: 'f-payment', cover: 'f-cover',
+  description: 'f-description', price_pence: 'f-price', cover: 'f-cover',
 };
 
 /** @param {Book|null} book */
@@ -265,7 +265,6 @@ function openEditor(book) {
   input('f-contributors').value = book?.contributors ?? '';
   /** @type {HTMLTextAreaElement} */ ($('f-description')).value = book?.description ?? '';
   input('f-price').value = book?.price_pence != null ? (book.price_pence / 100).toFixed(2) : '';
-  input('f-payment').value = book?.payment_url ?? '';
   input('f-order').value = String(book?.sort_order ?? nextSortOrder());
   input('f-published').checked = book?.is_published ?? false;
   button('delete').hidden = !book;
@@ -406,7 +405,6 @@ function readForm() {
     contributors: input('f-contributors').value.trim() || null,
     description: /** @type {HTMLTextAreaElement} */ ($('f-description')).value.trim() || null,
     price_pence: price,
-    payment_url: input('f-payment').value.trim() || null,
     sort_order: Number.isFinite(order) ? order : 0,
     is_published: input('f-published').checked,
   };

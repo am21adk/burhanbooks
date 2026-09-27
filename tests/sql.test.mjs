@@ -63,12 +63,11 @@ before(async () => {
   `);
 });
 
-test('the seed book is there once, published, with price and link empty', async () => {
+test('the seed book is there once, published, with no price yet', async () => {
   await db.exec('reset role');
-  const [book] = await rows(`select title, price_pence, payment_url, is_published, cover_width from public.books where slug = '${SLUG}'`);
+  const [book] = await rows(`select title, price_pence, is_published, cover_width from public.books where slug = '${SLUG}'`);
   assert.equal(book.title, 'Shi’i Theology: A translation of Kashf al-Murad');
   assert.equal(book.price_pence, null);
-  assert.equal(book.payment_url, null);
   assert.equal(book.is_published, true);
   assert.equal(book.cover_width, 468);
   assert.equal((await rows('select count(*)::int as n from public.books')).at(0)?.n, 2);
@@ -101,7 +100,7 @@ test('the admin sees drafts and can add, edit and delete books and covers', asyn
   await as('authenticated', ADMIN);
   assert.equal((await rows('select public.is_admin() as ok')).at(0)?.ok, true);
   assert.deepEqual((await rows('select slug from public.books order by slug')).map((r) => r.slug), ['a-draft', SLUG]);
-  await db.query(`insert into public.books (slug, title, price_pence, payment_url) values ('new-book', 'New book', 1250, 'https://buy.stripe.com/test_123')`);
+  await db.query(`insert into public.books (slug, title, price_pence) values ('new-book', 'New book', 1250)`);
   const [before] = await rows(`select updated_at from public.books where slug = 'new-book'`);
   await new Promise((r) => setTimeout(r, 10));
   assert.equal((await rows(`update public.books set is_published = true where slug = 'new-book' returning id`)).length, 1);
@@ -119,9 +118,8 @@ test('the database refuses what the admin form refuses', async () => {
   const bad = {
     'bad web address': `insert into public.books (slug, title) values ('Bad Slug', 'X')`,
     'empty title': `insert into public.books (slug, title) values ('x1', '   ')`,
-    'http payment link': `insert into public.books (slug, title, payment_url) values ('x2', 'X', 'http://buy.example/x')`,
-    'script payment link': `insert into public.books (slug, title, payment_url) values ('x3', 'X', 'javascript:alert(1)')`,
     'negative price': `insert into public.books (slug, title, price_pence) values ('x4', 'X', -1)`,
+    'price of nothing': `insert into public.books (slug, title, price_pence) values ('x2', 'X', 0)`,
     'cover without size': `insert into public.books (slug, title, cover_url) values ('x5', 'X', 'https://a.b/c.jpg')`,
     'cover from anywhere else': `insert into public.books (slug, title, cover_url, cover_width, cover_height) values ('x6', 'X', 'data:image/png;base64,AA', 1, 1)`,
     'duplicate web address': `insert into public.books (slug, title) values ('${SLUG}', 'Copy')`,
