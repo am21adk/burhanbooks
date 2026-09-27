@@ -60,6 +60,11 @@ async function main() {
 
   const covers = new Map();
   for (const book of books) covers.set(book.slug, await publishCover(book, { srcDir: SRC, distDir: DIST }));
+  // Covers kept in the repo are also served at the path the database stores
+  // for them, so the admin can show them. Public pages use the hashed copies.
+  copyDir(path.join(SRC, 'img', 'books'), path.join(DIST, 'img', 'books'));
+
+  buildAdmin(css);
 
   const shared = {
     siteName: site.name,
@@ -204,6 +209,30 @@ function bookVars(book, cover, { eager, sizes }) {
  */
 function keepHyphenatedWordsTogether(title) {
   return escapeHtml(title).replace(/\S+-\S+/g, (word) => (word.length <= 20 ? `<span class="nowrap">${word}</span>` : word));
+}
+
+/**
+ * The admin page gets its own Content-Security-Policy, the only one that
+ * may talk to Supabase, and the public Supabase settings it needs. Without
+ * them (a local build) it points at the preview server's stand-in.
+ * @param {string} css
+ */
+function buildAdmin(css) {
+  const supabaseUrl = (env.SUPABASE_URL || 'http://localhost:8790/supabase').replace(/\/$/, '');
+  const anonKey = env.SUPABASE_ANON_KEY || 'local-preview-anon-key';
+  const origin = new URL(supabaseUrl).origin;
+  const csp = [
+    "default-src 'self'", `img-src 'self' data: blob: ${origin}`, "font-src 'self'", "style-src 'self'", "script-src 'self'",
+    `connect-src 'self' ${origin}`, "object-src 'none'", "base-uri 'self'", "form-action 'self'",
+  ].join('; ');
+  const config = JSON.stringify({ supabaseUrl, anonKey }).replace(/</g, '\\u003c');
+  const template = fs.readFileSync(path.join(SRC, 'admin', 'index.html'), 'utf8');
+  write(path.join('admin', 'index.html'), fill(template, { siteName: site.name, css, csp, config }, partial, 'admin'));
+  for (const file of ['admin.js', 'supabase.js', 'admin.css']) {
+    fs.copyFileSync(path.join(SRC, 'admin', file), path.join(DIST, 'admin', file));
+  }
+  fs.mkdirSync(path.join(DIST, 'js'), { recursive: true });
+  fs.copyFileSync(path.join(SRC, 'js', 'shared.js'), path.join(DIST, 'js', 'shared.js'));
 }
 
 /**

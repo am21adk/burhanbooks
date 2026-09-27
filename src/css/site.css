@@ -41,6 +41,7 @@
   --surface: #f5f5f8;
   --error: #9b1c1c;
   --shadow: 0 4px 20px rgb(0 0 0 / 0.08);
+  --backdrop: rgb(0 0 0 / 0.35);
 
   --font-display: "Barlow Condensed", "Arial Narrow", Arial, sans-serif;
   --font-body: "Nunito Sans", -apple-system, "Segoe UI", Arial, sans-serif;
@@ -130,6 +131,16 @@ a:hover {
   outline-offset: 2px;
 }
 
+/* Headings are focused by script only to tell screen readers where they are; they aren't controls. */
+[tabindex="-1"]:focus {
+  outline: none;
+}
+
+/* Anything given a display value below would otherwise ignore the hidden attribute. */
+[hidden] {
+  display: none !important;
+}
+
 .nowrap {
   white-space: nowrap;
 }
@@ -170,6 +181,11 @@ a:hover {
     position: sticky;
     top: 0;
     z-index: 10;
+  }
+
+  /* Keep anything scrolled to (a linked heading, a field with an error) clear of the sticky header. */
+  html {
+    scroll-padding-top: 90px;
   }
 }
 

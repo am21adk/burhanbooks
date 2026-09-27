@@ -74,7 +74,7 @@ function notFound(res, headers = {}) {
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const { routes } = await import('./supabase-standin.mjs').catch(() => ({ routes: [] }));
+  const { routes } = await import('./supabase-standin.mjs');
   const port = Number(process.env.PORT || 8790);
   await startPreview({ port, extraRoutes: routes });
   console.log(`Preview on http://localhost:${port}  (serving ${path.relative(process.cwd(), DIST) || 'dist'})`);

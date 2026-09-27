@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Admin – {{siteName}}</title>
+<meta name="robots" content="noindex, nofollow">
+<meta http-equiv="Content-Security-Policy" content="{{csp}}">
+<meta name="referrer" content="no-referrer">
+<link rel="stylesheet" href="{{css}}">
+<link rel="stylesheet" href="/admin/admin.css">
+<link rel="icon" href="/favicon.ico" sizes="32x32">
+<script type="application/json" id="admin-config">{{{config}}}</script>
+<script type="module" src="/admin/admin.js"></script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="site-header__inner">
+    <a class="site-header__logo" href="/"><img src="/img/logo-312.png" width="156" height="58" alt="{{siteName}} (view the site)"></a>
+    <div class="admin-account" id="account" hidden>
+      <span class="admin-account__email" id="account-email"></span>
+      <button type="button" class="button button--text" id="sign-out">Sign out</button>
+    </div>
+  </div>
+</header>
+
+<main id="main" class="page admin">
+  <p class="empty-state" id="boot">Loading the admin…</p>
+  <noscript><p>The admin needs JavaScript. Turn it on for this site and reload the page.</p></noscript>
+
+  <section id="view-signin" hidden>
+    <h1 class="page-title" tabindex="-1">Admin sign in</h1>
+    <form class="form" id="signin-form" novalidate>
+      <p class="form-error" id="signin-error" role="alert" hidden></p>
+      <div class="field">
+        <label for="signin-email">Email</label>
+        <input id="signin-email" name="email" type="email" autocomplete="username" required>
+      </div>
+      <div class="field">
+        <label for="signin-password">Password</label>
+        <input id="signin-password" name="password" type="password" autocomplete="current-password" required>
+      </div>
+      <button class="button" type="submit">Sign in</button>
+    </form>
+    <p class="form-note">Only the shop’s admin account can sign in here.</p>
+  </section>
+
+  <section id="view-list" hidden>
+    <div class="admin-heading">
+      <h1 class="page-title" tabindex="-1">Books</h1>
+      <div class="admin-actions">
+        <button type="button" class="button" id="add-book">Add a book</button>
+        <button type="button" class="button button--secondary" id="publish">Publish changes</button>
+      </div>
+    </div>
+    <p class="notice" id="list-notice" role="status" hidden></p>
+    <div class="form-error" id="list-error" role="alert" hidden>
+      <p id="list-error-text"></p>
+      <button type="button" class="button button--secondary" id="list-retry">Try again</button>
+    </div>
+    <p class="empty-state" id="list-loading" hidden>Loading books…</p>
+    <p class="empty-state" id="list-empty" hidden>No books yet. Add the first one.</p>
+    <ul class="admin-books" id="book-rows"></ul>
+    <p class="form-note">Saved changes appear on the public site after you press <strong>Publish changes</strong>. It takes a minute or two.</p>
+  </section>
+
+  <section id="view-edit" hidden>
+    <p><button type="button" class="button button--text admin-back" id="back">All books</button></p>
+    <h1 class="page-title" tabindex="-1" id="edit-title">Edit book</h1>
+    <form class="form" id="book-form" novalidate>
+      <p class="form-error" id="book-error" role="alert" hidden></p>
+      <fieldset class="form__fields" id="book-fields">
+        <legend class="visually-hidden">Book details</legend>
+
+        <div class="field">
+          <label for="f-title">Title</label>
+          <input id="f-title" name="title" type="text" maxlength="200" required aria-describedby="f-title-error">
+          <p class="field-error" id="f-title-error" hidden></p>
+        </div>
+
+        <div class="field">
+          <label for="f-slug">Web address</label>
+          <div class="field-prefix">
+            <span aria-hidden="true">burhanbooks.com/product/</span>
+            <input id="f-slug" name="slug" type="text" maxlength="80" required spellcheck="false" autocapitalize="off" aria-describedby="f-slug-help f-slug-error">
+          </div>
+          <p class="field-help" id="f-slug-help">Lower-case letters, numbers and hyphens. Filled in from the title for a new book.</p>
+          <p class="field-warning" id="f-slug-warning" hidden>This book is on the site. Changing its address breaks links to the old one, including any already shared.</p>
+          <p class="field-error" id="f-slug-error" hidden></p>
+        </div>
+
+        <div class="field">
+          <label for="f-author">Author <span class="optional">(optional)</span></label>
+          <input id="f-author" name="author" type="text" maxlength="200" aria-describedby="f-author-error">
+          <p class="field-error" id="f-author-error" hidden></p>
+        </div>
+
+        <div class="field">
+          <label for="f-contributors">Translators and editors <span class="optional">(optional)</span></label>
+          <input id="f-contributors" name="contributors" type="text" maxlength="300" aria-describedby="f-contributors-help f-contributors-error">
+          <p class="field-help" id="f-contributors-help">One line, as you want it shown under the author. For example: Translated by …</p>
+          <p class="field-error" id="f-contributors-error" hidden></p>
+        </div>
+
+        <div class="field">
+          <label for="f-description">Description <span class="optional">(optional)</span></label>
+          <textarea id="f-description" name="description" rows="12" maxlength="20000" aria-describedby="f-description-help f-description-error"></textarea>
+          <p class="field-help" id="f-description-help">A blank line starts a new paragraph. Put *one asterisk* either side of words for italics and **two** for bold.</p>
+          <p class="field-error" id="f-description-error" hidden></p>
+          <details class="preview">
+            <summary>Preview</summary>
+            <div class="prose" id="f-description-preview"></div>
+          </details>
+        </div>
+
+        <div class="field field--short">
+          <label for="f-price">Price in pounds <span class="optional">(optional)</span></label>
+          <input id="f-price" name="price" type="text" inputmode="decimal" autocomplete="off" aria-describedby="f-price-help f-price-error">
+          <p class="field-help" id="f-price-help">For example 18.99. Leave it empty until the book is on sale.</p>
+          <p class="field-error" id="f-price-error" hidden></p>
+        </div>
+
+        <div class="field">
+          <label for="f-payment">Payment link <span class="optional">(optional)</span></label>
+          <input id="f-payment" name="payment_url" type="url" inputmode="url" spellcheck="false" aria-describedby="f-payment-help f-payment-error">
+          <p class="field-help" id="f-payment-help">The checkout link from your payment provider, such as a Stripe Payment Link. The Buy button only appears when a book has a price and a payment link.</p>
+          <p class="field-error" id="f-payment-error" hidden></p>
+        </div>
+
+        <div class="field">
+          <span class="field-label" id="f-cover-label">Cover</span>
+          <div class="cover-field">
+            <div class="cover-field__preview" id="f-cover-preview"></div>
+            <div class="cover-field__controls">
+              <label class="button button--secondary" for="f-cover">Choose an image</label>
+              <input class="visually-hidden" id="f-cover" name="cover" type="file" accept="image/jpeg,image/png,image/webp" aria-labelledby="f-cover-label" aria-describedby="f-cover-help f-cover-error">
+              <button type="button" class="button button--text" id="f-cover-remove" hidden>Remove cover</button>
+              <p class="field-help" id="f-cover-help">JPEG, PNG or WebP, ideally at least 960 pixels wide. It’s resized before uploading.</p>
+              <p class="field-warning" id="f-cover-warning" hidden></p>
+              <p class="field-error" id="f-cover-error" hidden></p>
+            </div>
+          </div>
+        </div>
+
+        <div class="field field--short">
+          <label for="f-order">Position in the list</label>
+          <input id="f-order" name="sort_order" type="number" step="1" min="-1000" max="1000" value="0" aria-describedby="f-order-help">
+          <p class="field-help" id="f-order-help">Lower numbers come first. Books with the same number are listed by title.</p>
+        </div>
+
+        <div class="field field--check">
+          <input id="f-published" name="is_published" type="checkbox">
+          <label for="f-published">Show this book on the site</label>
+        </div>
+      </fieldset>
+
+      <div class="form-actions">
+        <button class="button" type="submit" id="save">Save</button>
+        <button type="button" class="button button--secondary" id="cancel">Cancel</button>
+        <button type="button" class="button button--danger" id="delete" hidden>Delete book</button>
+      </div>
+    </form>
+  </section>
+</main>
+
+<dialog class="dialog" id="dialog" aria-labelledby="dialog-title" aria-describedby="dialog-body">
+  <h2 class="dialog__title" id="dialog-title">Are you sure?</h2>
+  <p id="dialog-body"></p>
+  <div class="dialog__actions">
+    <button type="button" class="button button--secondary" id="dialog-cancel">Cancel</button>
+    <button type="button" class="button" id="dialog-confirm">Confirm</button>
+  </div>
+</dialog>
+</body>
+</html>
