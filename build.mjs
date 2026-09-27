@@ -115,7 +115,7 @@ async function main() {
   const bookTemplate = fs.readFileSync(path.join(SRC, 'templates', 'book.html'), 'utf8');
   for (const book of books) {
     const cover = covers.get(book.slug) ?? null;
-    const vars = { ...shared, ...bookVars(book, cover, { eager: true, priority: true, sizes: '(min-width: 800px) 480px, 90vw' }) };
+    const vars = { ...shared, ...bookVars(book, cover, { eager: true, priority: true, sizes: '(min-width: 900px) 600px, 92vw' }) };
     const html = renderPage({
       title: `${book.title} – ${site.name}`,
       description: book.summary || `${book.title}${book.author ? ` by ${book.author}` : ''}.`,
@@ -181,7 +181,7 @@ function renderPage({ title, description, path: pagePath, body, vars, noindex = 
 function renderBookList(books, covers) {
   if (!books.length) return fill(partial('book-list-empty'), {}, partial);
   const cards = books.map((book, index) => fill(partial('book-card'), {
-    ...bookVars(book, covers.get(book.slug) ?? null, { eager: index < 4, priority: index === 0, sizes: '(min-width: 600px) 280px, 90vw' }),
+    ...bookVars(book, covers.get(book.slug) ?? null, { eager: index < 4, priority: index === 0, sizes: '(min-width: 1024px) 270px, (min-width: 768px) 32vw, (min-width: 401px) 48vw, 90vw' }),
   }, partial, `card ${book.slug}`));
   return `<ul class="book-grid">\n${cards.join('\n')}\n</ul>`;
 }
@@ -203,7 +203,7 @@ function bookVars(book, cover, { eager, priority = false, sizes }) {
     bookTitleHtml: keepHyphenatedWordsTogether(book.title),
     bookPath: book.path,
     bookCover: image,
-    bookAuthor: book.author ? `<p class="book-author">${escapeHtml(book.author)}</p>` : '',
+    bookAuthor: book.author ? `<p class="book-author label">${escapeHtml(book.author)}</p>` : '',
     bookContributors: book.contributors ? `<p class="book-contributors">${escapeHtml(book.contributors)}</p>` : '',
     bookDescription: book.descriptionHtml,
     bookPrice: book.onSale ? `<p class="book-price">${escapeHtml(/** @type {string} */ (book.price))}</p>` : '<p class="book-unavailable">Not on sale yet.</p>',

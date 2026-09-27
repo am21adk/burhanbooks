@@ -1,8 +1,9 @@
 /* Burhan Books
  *
- * Every colour, size and space below comes from the tokens in :root. They
- * are the values the previous theme used most (black on white, Barlow
- * Condensed capitals, thin lavender-grey lines), cut down to a small set.
+ * Every colour, size and space below comes from the tokens in :root: the
+ * old theme's black on white, Barlow Condensed and lavender-grey lines, laid
+ * out the way the ABSoc shop is: covers in identical soft tiles, small
+ * spaced capitals for labels, hairlines and plenty of room.
  */
 
 @font-face {
@@ -35,19 +36,21 @@
 }
 
 :root {
-  --ink: #000;
+  --ink: #111118;
   --paper: #fff;
   --muted: #5c5c8a;
   --line: #ededf4;
   --line-strong: #cdcde1;
   --surface: #f5f5f8;
   --error: #9b1c1c;
-  --shadow: 0 4px 20px rgb(0 0 0 / 0.08);
+  --shadow-xs: 0 1px 3px rgb(17 17 24 / 0.06);
+  --shadow: 0 8px 24px rgb(17 17 24 / 0.09);
   --backdrop: rgb(0 0 0 / 0.35);
 
   --font-display: "Barlow Condensed", "Arial Narrow", Arial, sans-serif;
   --font-body: "Nunito Sans", -apple-system, "Segoe UI", Arial, sans-serif;
 
+  --text-xs: 0.75rem;
   --text-sm: 0.8125rem;
   --text-base: 1rem;
   --text-lg: 1.25rem;
@@ -56,6 +59,8 @@
   --text-3xl: 2.8125rem;
   --leading-body: 1.6;
   --leading-tight: 1.15;
+  --tracking-label: 0.14em;
+  --ease: 200ms cubic-bezier(0.4, 0, 0.2, 1);
 
   --space-1: 5px;
   --space-2: 10px;
@@ -66,7 +71,8 @@
   --space-7: 60px;
   --space-8: 80px;
 
-  --radius: 0;
+  --radius: 8px;
+  --radius-lg: 14px;
   --radius-pill: 999px;
   --control-height: 48px;
   --measure: 65ch;
@@ -231,6 +237,7 @@ a:hover {
   padding: 0 var(--space-2);
   font-family: var(--font-display);
   font-size: var(--text-lg);
+  letter-spacing: 0.04em;
   text-decoration: none;
   text-transform: uppercase;
 }
@@ -252,7 +259,6 @@ a:hover {
 .page-title {
   margin-bottom: var(--space-5);
   font-size: var(--text-2xl);
-  text-transform: uppercase;
 }
 
 @media (min-width: 900px) {
@@ -270,6 +276,15 @@ a:hover {
   font-size: var(--text-xl);
 }
 
+/* Small spaced capitals: authors, section headings inside a page. */
+.label {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+}
+
 .empty-state {
   color: var(--muted);
 }
@@ -277,6 +292,7 @@ a:hover {
 .needs {
   padding: var(--space-3);
   border: 2px dashed var(--ink);
+  border-radius: var(--radius);
   background: var(--surface);
 }
 
@@ -293,9 +309,11 @@ a:hover {
   background: var(--ink);
   color: var(--paper);
   font: 400 var(--text-lg) / 1 var(--font-display);
+  letter-spacing: 0.04em;
   text-decoration: none;
   text-transform: uppercase;
   cursor: pointer;
+  transition: background-color var(--ease), color var(--ease);
 }
 
 .button:hover {
@@ -332,28 +350,99 @@ a:hover {
   cursor: not-allowed;
 }
 
+/* Cover tiles: every cover sits in the same frame, contained with room
+   around it, so covers of different shapes line up the same way. The frame
+   is a little taller than wide because books are. */
+
+.tile {
+  position: relative;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-xs);
+  transition: box-shadow var(--ease);
+}
+
+.tile .book-cover {
+  width: 100%;
+  height: 100%;
+  padding: 8%;
+  object-fit: contain;
+}
+
+.tile .book-cover--missing {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 15%;
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  line-height: var(--leading-tight);
+  text-align: center;
+}
+
 /* Book list */
 
 .book-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr));
-  gap: var(--space-6) var(--space-5);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-5) var(--space-4);
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.book-card {
-  position: relative;
+@media (max-width: 400px) {
+  .book-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
-.book-card .book-cover {
-  width: 100%;
-  margin-bottom: var(--space-3);
+@media (min-width: 768px) {
+  .book-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-6) var(--space-5);
+  }
+}
+
+@media (min-width: 1024px) {
+  .book-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.book-card {
+  position: relative;
+  transition: transform var(--ease);
+}
+
+.book-card:hover {
+  transform: translateY(-3px);
+}
+
+.book-card:hover .tile {
+  box-shadow: var(--shadow);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .book-card,
+  .tile {
+    transition: none;
+  }
+
+  .book-card:hover {
+    transform: none;
+  }
+}
+
+.book-card__body {
+  padding: var(--space-3) var(--space-1) 0;
 }
 
 .book-card__title {
-  margin-bottom: var(--space-1);
+  margin: 0 0 var(--space-1);
   font-size: var(--text-xl);
 }
 
@@ -361,24 +450,32 @@ a:hover {
   text-decoration: none;
 }
 
+/* The title's link covers the whole card, so the cover is clickable too. */
 .book-card__title a::after {
   position: absolute;
   inset: 0;
+  border-radius: var(--radius-lg);
   content: "";
 }
 
-.book-card:hover .book-card__title a {
-  text-decoration: underline;
+.book-card__title a:focus-visible {
+  outline: none;
+}
+
+.book-card:has(a:focus-visible) .tile {
+  outline: 2px solid var(--ink);
+  outline-offset: 3px;
 }
 
 .book-card .book-author {
-  margin-bottom: var(--space-1);
+  margin: 0 0 var(--space-2);
   color: var(--muted);
 }
 
 .book-card .book-price,
 .book-card .book-unavailable {
   margin: 0;
+  font-size: var(--text-sm);
 }
 
 /* Book page */
@@ -389,41 +486,46 @@ a:hover {
   gap: var(--space-5);
 }
 
-@media (min-width: 800px) {
+@media (min-width: 900px) {
   .book {
-    grid-template-columns: minmax(0, 480px) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
     gap: var(--space-7);
     align-items: start;
   }
-}
 
-.book__cover .book-cover {
-  margin: 0 auto;
+  .book__gallery {
+    position: sticky;
+    top: calc(70px + var(--space-5));
+  }
 }
 
 .book__title {
   margin-bottom: var(--space-3);
   font-size: var(--text-2xl);
-  text-transform: uppercase;
 }
 
-.book-author {
-  margin-bottom: var(--space-1);
+@media (min-width: 900px) {
+  .book__title {
+    font-size: var(--text-3xl);
+  }
+}
+
+.book__info .book-author {
+  margin: 0 0 var(--space-2);
+  color: var(--muted);
 }
 
 .book-contributors {
+  margin: 0;
   color: var(--muted);
   font-size: var(--text-sm);
 }
 
 .book__buy {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-3) var(--space-5);
-  margin: var(--space-5) 0;
-  padding: var(--space-5) 0;
-  border-top: 1px solid var(--line);
+  display: grid;
+  gap: var(--space-3);
+  margin: var(--space-5) 0 0;
+  padding-bottom: var(--space-5);
   border-bottom: 1px solid var(--line);
 }
 
@@ -431,25 +533,62 @@ a:hover {
   margin: 0;
 }
 
+.book__buy .button {
+  width: 100%;
+}
+
 .book-price {
-  font-family: var(--font-display);
-  font-size: var(--text-xl);
+  font-weight: 700;
+}
+
+.book__buy .book-price {
+  font-size: var(--text-lg);
 }
 
 .book-unavailable {
   color: var(--muted);
 }
 
-.book-cover--missing {
+/* Description, delivery and returns: native disclosures, no script. */
+
+.accordion details {
+  border-bottom: 1px solid var(--line);
+}
+
+.accordion summary {
   display: flex;
   align-items: center;
-  justify-content: center;
-  aspect-ratio: 2 / 3;
-  padding: var(--space-4);
-  background: var(--surface);
+  justify-content: space-between;
+  min-height: var(--control-height);
+  padding: var(--space-3) 0;
+  list-style: none;
+  cursor: pointer;
+}
+
+.accordion summary::-webkit-details-marker {
+  display: none;
+}
+
+.accordion summary::after {
+  color: var(--muted);
   font-family: var(--font-display);
   font-size: var(--text-xl);
-  text-align: center;
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 1;
+  content: "+";
+}
+
+.accordion details[open] summary::after {
+  content: "–";
+}
+
+.accordion__body {
+  padding: 0 0 var(--space-5);
+}
+
+.accordion__body p:last-child {
+  margin-bottom: 0;
 }
 
 /* Footer */

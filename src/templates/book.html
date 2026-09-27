@@ -1,8 +1,8 @@
 <article class="book">
-  <div class="book__cover">
-    {{{bookCover}}}
+  <div class="book__gallery">
+    <div class="tile">{{{bookCover}}}</div>
   </div>
-  <div class="book__details">
+  <div class="book__info">
     <h1 class="book__title">{{{bookTitleHtml}}}</h1>
     {{{bookAuthor}}}
     {{{bookContributors}}}
@@ -10,8 +10,20 @@
       {{{bookPrice}}}
       {{{bookBuy}}}
     </div>
-    <div class="book__description prose">
+    <div class="accordion">
+      <details open>
+        <summary class="label">Description</summary>
+        <div class="accordion__body prose">
 {{{bookDescription}}}
+        </div>
+      </details>
+      <details>
+        <summary class="label">Delivery and returns</summary>
+        <div class="accordion__body">
+          <p>What delivery costs and how long it takes: <a href="/delivery/">Delivery</a>.</p>
+          <p>How to cancel an order or return a book: <a href="/returns/">Returns and cancellations</a>.</p>
+        </div>
+      </details>
     </div>
   </div>
 </article>
