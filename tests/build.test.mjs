@@ -44,6 +44,19 @@ test('a production build (checked locally with the seed) is indexable and has no
   build({}); // leave dist/ as a normal local build
 });
 
+test('no invented social proof: no star ratings, review scores or "people viewing" counters', () => {
+  const run = build({});
+  assert.equal(run.status, 0, run.stderr);
+  const pages = fs.readdirSync(path.join(ROOT, 'dist'), { recursive: true, withFileTypes: true })
+    .filter((e) => e.isFile() && e.name.endsWith('.html'))
+    .map((e) => path.join(e.parentPath, e.name));
+  assert.ok(pages.length > 0);
+  for (const page of pages) {
+    const html = fs.readFileSync(page, 'utf8');
+    assert.doesNotMatch(html, /out of 5|star.?rating|rating(value)?|aggregateRating|people[ _-]viewing|viewing[ _-](this|now)|number__of_people/i, `${path.relative(ROOT, page)} shows a rating or viewer count`);
+  }
+});
+
 test('image widths are read from the file itself', () => {
   const cover = fs.readFileSync(path.join(ROOT, 'src', 'img', 'books', 'shii-theology-kashf-al-murad.jpg'));
   assert.equal(imageWidth(cover), 468);
