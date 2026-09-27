@@ -255,7 +255,7 @@ function renderHeaders() {
       ...(production ? [] : [['X-Robots-Tag', 'noindex']]),
     ]],
     ['/css/*', [['Cache-Control', year]]],
-    ['/fonts/*', [['Cache-Control', year]]],
+    ['/fonts/*', [['Cache-Control', 'public, max-age=2592000']]], // stable names, so not immutable
     ['/img/books/*', [['Cache-Control', year]]],
     ['/admin/*', [['X-Robots-Tag', 'noindex'], ['Cache-Control', 'no-cache']]],
   ];
