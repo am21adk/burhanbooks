@@ -154,6 +154,8 @@ function renderPage({ title, description, path: pagePath, body, vars, noindex = 
     title,
     description,
     canonical: site.url + pagePath,
+    // A not-found page has no address of its own to name.
+    canonicalLink: noindex ? '' : `<link rel="canonical" href="${escapeHtml(site.url + pagePath)}">`,
     robots: noindex && !vars.robots ? '<meta name="robots" content="noindex">' : vars.robots,
     ogImage: site.url + image.src,
     ogImageWidth: image.width,
