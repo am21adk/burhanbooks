@@ -1,0 +1,48 @@
+# Publishes a preview of the site to GitHub Pages, at
+# https://am21adk.github.io/burhanbooks/, on every push to main.
+#
+# Only the built pages in dist/ are published, never the source, SQL, tests
+# or scripts. It's built like a Netlify deploy preview: noindex on every
+# page, the NEEDS: gaps shown, the book from src/data/books.seed.json, and
+# the admin switched off because there's no Supabase behind it here. The
+# real site, with the admin working, goes on Netlify (see the README).
+#
+# Needs Settings → Pages → Build and deployment → Source: GitHub Actions.
+name: Publish preview
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # the sitemap's page dates come from git history
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Build
+        run: node build.mjs
+        env:
+          BASE_PATH: /burhanbooks
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+      - id: deploy
+        uses: actions/deploy-pages@v4

@@ -7,7 +7,9 @@ import { formatDescription, formatPrice, parsePrice, slugify, validateBook, isOn
 /** @typedef {Record<string, any>} Book */
 
 const config = JSON.parse(/** @type {HTMLElement} */ (document.getElementById('admin-config')).textContent || '{}');
-const db = createClient({ url: config.supabaseUrl, anonKey: config.anonKey });
+// A copy of the site built without Supabase (the GitHub Pages preview) has nothing to sign in to.
+const connected = Boolean(config.supabaseUrl && config.anonKey);
+const db = createClient({ url: config.supabaseUrl || 'https://not-connected.invalid', anonKey: config.anonKey || '' });
 
 const $ = (/** @type {string} */ id) => /** @type {HTMLElement} */ (document.getElementById(id));
 const input = (/** @type {string} */ id) => /** @type {HTMLInputElement} */ (document.getElementById(id));
@@ -519,6 +521,10 @@ window.addEventListener('beforeunload', (event) => {
 /* ---------- Start ---------- */
 
 (async function start() {
+  if (!connected) {
+    $('boot').textContent = 'This copy of the site isn’t connected to the book database, so the admin can’t be used here. It works on the real site once Supabase is set up (see the README).';
+    return;
+  }
   if (!db.user) {
     show('signin');
     return;

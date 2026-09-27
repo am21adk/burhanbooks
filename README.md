@@ -28,6 +28,13 @@ locally. Sign in as `admin@burhanbooks.test` (or `someone@burhanbooks.test`,
 who isn't an admin) with the password `preview`. Publishing rebuilds `dist/`
 from the stand-in. Everything resets when the server stops.
 
+**Preview on GitHub Pages:** every push to `main` publishes the built pages
+to https://am21adk.github.io/burhanbooks/ (`.github/workflows/pages.yml`,
+built with `BASE_PATH=/burhanbooks`). It's a preview only: noindex
+everywhere, the book from the seed file, the `NEEDS:` gaps visible, and the
+admin switched off because there's no Supabase behind it. The real site
+goes on Netlify.
+
 `NEEDS:` marks copy only the owner can supply (the tagline, contact details
 and the policy pages). Local builds list what's missing; **a production
 build on Netlify fails until every gap is filled**, so the shop can't go live

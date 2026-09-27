@@ -12,6 +12,9 @@
 // and are never set on Netlify:
 //   BOOKS_SOURCE=seed  build production from the seed file
 //   ALLOW_GAPS=1       let a production build finish with NEEDS: gaps
+//
+// BASE_PATH=/burhanbooks builds a copy to be served below a folder, as
+// GitHub Pages serves this repository (.github/workflows/pages.yml).
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -27,6 +30,8 @@ const DIST = path.join(ROOT, 'dist');
 
 const env = process.env;
 const production = env.CONTEXT === 'production';
+const basePath = (env.BASE_PATH || '').replace(/\/+$/, '');
+if (basePath && !/^\/[a-z0-9-]+$/i.test(basePath)) throw new Error(`BASE_PATH must look like /burhanbooks, not "${env.BASE_PATH}"`);
 const site = JSON.parse(fs.readFileSync(path.join(SRC, 'site.json'), 'utf8'));
 const partial = partialLoader(path.join(SRC, 'partials'));
 const year = new Date().getFullYear();
@@ -130,6 +135,7 @@ async function main() {
 
   write('_headers', renderHeaders());
   write('_redirects', renderRedirects());
+  if (basePath) applyBasePath(DIST, basePath);
 
   const gaps = findGaps(DIST);
   const summary = `Built ${countFiles(DIST)} files into dist/ from ${books.length} book${books.length === 1 ? '' : 's'} (${from}) in ${Date.now() - started} ms${production ? ', production' : ''}.`;
@@ -221,12 +227,14 @@ function keepHyphenatedWordsTogether(title) {
  * @param {string} css
  */
 function buildAdmin(css) {
-  const supabaseUrl = (env.SUPABASE_URL || 'http://localhost:8790/supabase').replace(/\/$/, '');
-  const anonKey = env.SUPABASE_ANON_KEY || 'local-preview-anon-key';
-  const origin = new URL(supabaseUrl).origin;
+  // A copy served from a folder (GitHub Pages) has no Supabase behind it, so
+  // its admin says so instead of offering a sign-in that can't work.
+  const supabaseUrl = env.SUPABASE_URL ? env.SUPABASE_URL.replace(/\/$/, '') : basePath ? null : 'http://localhost:8790/supabase';
+  const anonKey = supabaseUrl ? env.SUPABASE_ANON_KEY || 'local-preview-anon-key' : null;
+  const origin = supabaseUrl ? ` ${new URL(supabaseUrl).origin}` : '';
   const csp = [
-    "default-src 'self'", `img-src 'self' data: blob: ${origin}`, "font-src 'self'", "style-src 'self'", "script-src 'self'",
-    `connect-src 'self' ${origin}`, "object-src 'none'", "base-uri 'self'", "form-action 'self'",
+    "default-src 'self'", `img-src 'self' data: blob:${origin}`, "font-src 'self'", "style-src 'self'", "script-src 'self'",
+    `connect-src 'self'${origin}`, "object-src 'none'", "base-uri 'self'", "form-action 'self'",
   ].join('; ');
   const config = JSON.stringify({ supabaseUrl, anonKey }).replace(/</g, '\\u003c');
   const template = fs.readFileSync(path.join(SRC, 'admin', 'index.html'), 'utf8');
@@ -236,6 +244,36 @@ function buildAdmin(css) {
   }
   fs.mkdirSync(path.join(DIST, 'js'), { recursive: true });
   fs.copyFileSync(path.join(SRC, 'js', 'shared.js'), path.join(DIST, 'js', 'shared.js'));
+}
+
+/**
+ * For a copy served below a folder, puts that folder in front of every
+ * root-relative address the pages use: links, images and srcsets, stylesheet
+ * and font URLs, and the web manifest's icons. Absolute addresses (canonicals,
+ * share tags) stay on burhanbooks.com, which is where they should point.
+ * @param {string} dir
+ * @param {string} base e.g. /burhanbooks
+ */
+function applyBasePath(dir, base) {
+  const prefix = (/** @type {string} */ url) => (url.startsWith('/') && !url.startsWith('//') ? base + url : url);
+  for (const entry of fs.readdirSync(dir, { recursive: true, withFileTypes: true })) {
+    if (!entry.isFile()) continue;
+    const file = path.join(entry.parentPath, entry.name);
+    const ext = path.extname(entry.name);
+    let text = fs.readFileSync(file, 'utf8');
+    if (ext === '.html') {
+      text = text
+        .replace(/(\s(?:href|src|action)=")(\/[^"]*)"/g, (_, attr, url) => `${attr}${prefix(url)}"`)
+        .replace(/(\ssrcset=")([^"]*)"/g, (_, attr, list) => `${attr}${list.split(',').map((/** @type {string} */ part) => part.trim().replace(/^\S+/, prefix)).join(', ')}"`);
+    } else if (ext === '.css') {
+      text = text.replace(/url\("(\/[^"]*)"\)/g, (_, url) => `url("${prefix(url)}")`);
+    } else if (ext === '.webmanifest') {
+      text = text.replace(/("src":\s*")(\/[^"]*)"/g, (_, key, url) => `${key}${prefix(url)}"`);
+    } else {
+      continue;
+    }
+    fs.writeFileSync(file, text);
+  }
 }
 
 /**

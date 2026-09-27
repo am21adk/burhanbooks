@@ -44,6 +44,26 @@ test('a production build (checked locally with the seed) is indexable and has no
   build({}); // leave dist/ as a normal local build
 });
 
+test('a copy built for a folder (GitHub Pages) prefixes every internal address and switches the admin off', () => {
+  const run = build({ BASE_PATH: '/burhanbooks' });
+  assert.equal(run.status, 0, run.stderr);
+  const read = (/** @type {string} */ rel) => fs.readFileSync(path.join(ROOT, 'dist', rel), 'utf8');
+  const home = read('index.html');
+  assert.match(home, /<link rel="stylesheet" href="\/burhanbooks\/css\/site\.[0-9a-f]+\.css">/);
+  assert.match(home, /href="\/burhanbooks\/contact\/"/);
+  assert.match(home, /href="\/burhanbooks\/product\/shii-theology-a-translation-of-kashf-al-murad\/"/);
+  assert.match(home, /srcset="\/burhanbooks\/img\/books\/[^ ]+ 300w, \/burhanbooks\/img\/books\/[^ ]+ 468w"/);
+  assert.match(home, /<link rel="canonical" href="https:\/\/burhanbooks\.com\/">/, 'canonical still names the real address');
+  assert.doesNotMatch(home, /\s(?:href|src)="\/(?!burhanbooks\/)/, 'no root-relative address left unprefixed');
+  const css = fs.readdirSync(path.join(ROOT, 'dist', 'css')).map((f) => read(`css/${f}`)).join('');
+  assert.match(css, /url\("\/burhanbooks\/fonts\/nunito-sans\.woff2"\)/);
+  assert.match(read('site.webmanifest'), /"src": "\/burhanbooks\/icon-192\.png"/);
+  assert.match(read('admin/index.html'), /"supabaseUrl":null/);
+  assert.match(read('admin/index.html'), /src="\/burhanbooks\/admin\/admin\.js"/);
+  assert.match(read('404.html'), /href="\/burhanbooks\/"/);
+  build({});
+});
+
 test('no invented social proof: no star ratings, review scores or "people viewing" counters', () => {
   const run = build({});
   assert.equal(run.status, 0, run.stderr);
