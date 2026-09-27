@@ -123,6 +123,9 @@ async function main() {
     ? `User-agent: *\nDisallow: /admin/\n\nSitemap: ${site.url}/sitemap.xml\n`
     : 'User-agent: *\nDisallow: /\n');
 
+  write('_headers', renderHeaders());
+  write('_redirects', renderRedirects());
+
   const gaps = findGaps(DIST);
   const summary = `Built ${countFiles(DIST)} files into dist/ from ${books.length} book${books.length === 1 ? '' : 's'} (${from}) in ${Date.now() - started} ms${production ? ', production' : ''}.`;
   if (gaps.length) {
@@ -201,6 +204,45 @@ function bookVars(book, cover, { eager, sizes }) {
  */
 function keepHyphenatedWordsTogether(title) {
   return escapeHtml(title).replace(/\S+-\S+/g, (word) => (word.length <= 20 ? `<span class="nowrap">${word}</span>` : word));
+}
+
+/**
+ * Netlify response headers. The Content-Security-Policy is a <meta> in each
+ * page instead, because the admin needs a different one and Netlify sends
+ * every matching header rule, which would stack two policies on /admin/.
+ */
+function renderHeaders() {
+  const year = 'public, max-age=31536000, immutable';
+  const rules = [
+    ['/*', [
+      ['X-Frame-Options', 'DENY'],
+      ['X-Content-Type-Options', 'nosniff'],
+      ['Referrer-Policy', 'strict-origin-when-cross-origin'],
+      ['Permissions-Policy', 'camera=(), microphone=(), geolocation=()'],
+      ['Strict-Transport-Security', 'max-age=31536000'],
+      ...(production ? [] : [['X-Robots-Tag', 'noindex']]),
+    ]],
+    ['/css/*', [['Cache-Control', year]]],
+    ['/fonts/*', [['Cache-Control', year]]],
+    ['/img/books/*', [['Cache-Control', year]]],
+    ['/admin/*', [['X-Robots-Tag', 'noindex'], ['Cache-Control', 'no-cache']]],
+  ];
+  const blocks = rules.map(([pattern, headers]) => [pattern, .../** @type {string[][]} */ (headers).map(([k, v]) => `  ${k}: ${v}`)].join('\n'));
+  return `${blocks.join('\n\n')}\n`;
+}
+
+/**
+ * Old WordPress addresses go to the nearest page here, so existing links and
+ * search results don't end on the 404. The book keeps its old address, so it
+ * needs no rule. On the production build, Netlify's own *.netlify.app name
+ * for the site redirects to burhanbooks.com, so there's one address.
+ */
+function renderRedirects() {
+  const gone = ['/shop', '/product-category', '/basket', '/checkout', '/my-account', '/sample-page', '/uncategorised', '/category', '/author', '/feed', '/comments'];
+  const lines = ['# Old WordPress addresses → the nearest page on this site'];
+  for (const from of gone) lines.push(`${from}  /  301`, `${from}/*  /  301`);
+  if (production && env.SITE_NAME) lines.unshift(`https://${env.SITE_NAME}.netlify.app/*  ${site.url}/:splat  301!`);
+  return `${lines.join('\n')}\n`;
 }
 
 /** @param {{ loc: string, lastmod: Date|null }[]} entries */

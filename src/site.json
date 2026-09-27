@@ -3,5 +3,5 @@
   "url": "https://burhanbooks.com",
   "locale": "en_GB",
   "tagline": "NEEDS: a one-line description of the shop for the home page and search results",
-  "shareImage": { "src": "/img/share.png", "width": 1200, "height": 630, "alt": "Burhan Books" }
+  "shareImage": { "src": "/img/share.jpg", "width": 1200, "height": 630, "alt": "The Burhan Books logo beside the cover of Shi’i Theology" }
 }
