@@ -7,10 +7,13 @@ hosted on Netlify, with a small admin for adding and editing books.
   They never call Supabase, so they keep working if it's down.
 - **Books** live in Supabase. The admin at `/admin/` edits them; pressing
   *Publish changes* rebuilds the site on Netlify (about a minute).
-- **Payment** is a payment link per book (for example a Stripe Payment
-  Link). The site takes no card details itself.
+- **Buying:** customers add books to a cart, kept in their own browser, and
+  pay on a Stripe Checkout page. `/api/checkout` prices the cart from the
+  site's own list of books on sale (`books.json`, written by the build), so
+  a book costs what its page says, then asks Stripe for the payment page.
+  The site takes no card details itself.
 
-No runtime dependencies: the build and the publish function use only Node's
+No runtime dependencies: the build and the two functions use only Node's
 standard library. `devDependencies` are checks and tests for this machine.
 
 ## Working on it
@@ -20,20 +23,23 @@ npm install                 # dev tools only
 node build.mjs              # → dist/, from src/data/books.seed.json
 node scripts/preview.mjs    # → http://localhost:8790 (admin at /admin/)
 node scripts/check.mjs      # HTML, types, links, colour tokens
-npm test                    # unit, build, database, publish and admin tests
+npm test                    # unit, build, database, publish, checkout, admin and cart tests
 ```
 
-The preview server stands in for Supabase and Netlify, so the admin works
-locally. Sign in as `admin@burhanbooks.test` (or `someone@burhanbooks.test`,
-who isn't an admin) with the password `preview`. Publishing rebuilds `dist/`
-from the stand-in. Everything resets when the server stops.
+The preview server stands in for Supabase, Netlify and Stripe, so the admin
+and the cart work locally. Sign in as `admin@burhanbooks.test` (or
+`someone@burhanbooks.test`, who isn't an admin) with the password `preview`.
+Publishing rebuilds `dist/` from the stand-in. Give the book a price there to
+see Add to cart; Checkout then goes to a stand-in payment page, and nothing is
+charged. Everything resets when the server stops.
 
 **Preview on GitHub Pages:** every push to `main` publishes the built pages
 to https://am21adk.github.io/burhanbooks/ (`.github/workflows/pages.yml`,
 built with `BASE_PATH=/burhanbooks`). It's a preview only: noindex
-everywhere, the book from the seed file, the `NEEDS:` gaps visible, and the
-admin switched off because there's no Supabase behind it. The real site
-goes on Netlify.
+everywhere, the book from the seed file (so "Not on sale yet" until it has a
+price), the `NEEDS:` gaps visible, and the admin and checkout switched off
+because there's no Supabase or Stripe behind it. The real site goes on
+Netlify.
 
 `NEEDS:` marks copy only the owner can supply (the tagline and the contact
 details). Local builds list what's missing; **a production
@@ -79,17 +85,34 @@ delete the old one. The admin page doesn't handle password-reset emails.
    a robots.txt that blocks everything; only the production build is
    indexable.
 
-### 3. Before and after going live
+### 3. Stripe
 
-- In the admin, give the book its price and payment link, then publish.
+1. Try it first in Stripe's test mode, then repeat these steps in live mode.
+2. **Developers → API keys:** create a restricted key with write access to
+   Checkout Sessions, and add it in Netlify as the environment variable
+   `STRIPE_SECRET_KEY`. It stays on Netlify; only `/api/checkout` uses it.
+   If Stripe refuses the key, the function's log in Netlify gives Stripe's
+   reason (such as a permission the key lacks).
+3. Delivery: Stripe asks for a UK delivery address (`DELIVERY_COUNTRIES` in
+   `netlify/functions/checkout.mjs`). To charge for delivery, make a shipping
+   rate in Stripe and add its id (`shr_…`) as `STRIPE_SHIPPING_RATE`.
+   Without it, no delivery charge is added.
+4. Orders appear in Stripe under Payments, with the customer's address.
+   Stripe can email the customer a receipt, and you a note of each payment;
+   both are switched on in Stripe's settings.
+
+### 4. Before and after going live
+
+- In the admin, give the book its price, then publish.
 - Fill every `NEEDS:` gap (in `src/site.json` and `src/pages/`).
 - Add `burhanbooks.com` as the site's domain in Netlify and point DNS at it
   from Cloudflare. **Change only the `burhanbooks.com` and `www` records.
   Leave the email (MX, SPF, DKIM) records alone.** Netlify issues the HTTPS
   certificate; the production build then redirects the `*.netlify.app`
   name to `burhanbooks.com`.
-- Old WordPress addresses (`/shop/`, `/basket/`, `/my-account/` and so on)
-  redirect to the home page; the book keeps its old address.
+- Old WordPress addresses redirect: `/basket/` and `/checkout/` to the cart,
+  `/shop/`, `/my-account/` and the rest to the home page. The book keeps
+  its old address.
 
 ## Layout
 
@@ -101,9 +124,11 @@ delete the old one. The admin page doesn't handle password-reset emails.
 | `src/templates/book.html` | One page per book |
 | `src/partials/` | Layout, header, footer, book card |
 | `src/admin/` | The admin page, its script and styles, and a small Supabase client |
-| `src/js/shared.js` | Rules shared by the build and the admin |
+| `src/js/shared.js` | Rules shared by the build, the admin, the cart and checkout |
+| `src/js/cart.js` | The cart: the count by the Cart link, Add to cart, the cart page |
 | `src/css/site.css` | All public styles, built on the tokens in `:root` |
 | `supabase/` | Tables, access rules, covers bucket, seed (run in the SQL editor) |
 | `netlify/functions/publish.mjs` | `/api/publish`: checks the admin, triggers the build hook |
-| `scripts/` | Preview server and Supabase stand-in, checks, share image and seed generators (not deployed) |
+| `netlify/functions/checkout.mjs` | `/api/checkout`: prices the cart, opens a Stripe Checkout page |
+| `scripts/` | Preview server with Supabase and Stripe stand-ins, checks, share image and seed generators (not deployed) |
 | `tests/` | `npm test` |

@@ -4,8 +4,9 @@
 //
 // Tidy URLs (/contact/ → contact/index.html, /contact → 301 /contact/), the
 // 404 page, and the _redirects and _headers files the build writes.
-// Handlers added with extraRoutes (the admin's Supabase stand-in) are
-// consulted first. Preview only; nothing here is deployed.
+// Handlers added with extraRoutes (the admin's Supabase stand-in, and the
+// Stripe stand-in behind checkout) are consulted first. Preview only;
+// nothing here is deployed.
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -74,8 +75,9 @@ function notFound(res, headers = {}) {
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const { routes } = await import('./supabase-standin.mjs');
+  const { routes: supabase } = await import('./supabase-standin.mjs');
+  const { routes: stripe } = await import('./stripe-standin.mjs');
   const port = Number(process.env.PORT || 8790);
-  await startPreview({ port, extraRoutes: routes });
+  await startPreview({ port, extraRoutes: [...supabase, ...stripe] });
   console.log(`Preview on http://localhost:${port}  (serving ${path.relative(process.cwd(), DIST) || 'dist'})`);
 }

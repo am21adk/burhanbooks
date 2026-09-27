@@ -1,10 +1,12 @@
-# Netlify builds the site into dist/ and serves /api/publish from
-# netlify/functions. The build needs no packages (only Node's standard
+# Netlify builds the site into dist/ and serves /api/publish and
+# /api/checkout from netlify/functions. The build needs no packages (only Node's standard
 # library), so dev tools aren't installed there.
 #
 # Set in Netlify → Site configuration → Environment variables:
 #   SUPABASE_URL, SUPABASE_ANON_KEY   (the anon key is public by design)
 #   NETLIFY_BUILD_HOOK                (secret; used only by /api/publish)
+#   STRIPE_SECRET_KEY                 (secret; used only by /api/checkout)
+#   STRIPE_SHIPPING_RATE              (optional: a Stripe shipping rate id)
 # Netlify sets CONTEXT and SITE_NAME itself. See README.md.
 
 [build]
