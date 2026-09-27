@@ -1,0 +1,20 @@
+{
+  "name": "burhanbooks-site",
+  "private": true,
+  "type": "module",
+  "description": "burhanbooks.com: static pages built from the book list in Supabase, with an admin for the shop owner. No runtime dependencies.",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "preview": "node scripts/preview.mjs",
+    "check": "node scripts/check.mjs",
+    "test": "node --test tests/"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.3",
+    "html-validate": "^11.16.1",
+    "typescript": "^7.0.2"
+  }
+}
