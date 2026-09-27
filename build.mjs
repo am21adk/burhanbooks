@@ -110,7 +110,7 @@ async function main() {
   const bookTemplate = fs.readFileSync(path.join(SRC, 'templates', 'book.html'), 'utf8');
   for (const book of books) {
     const cover = covers.get(book.slug) ?? null;
-    const vars = { ...shared, ...bookVars(book, cover, { eager: true, sizes: '(min-width: 800px) 480px, 90vw' }) };
+    const vars = { ...shared, ...bookVars(book, cover, { eager: true, priority: true, sizes: '(min-width: 800px) 480px, 90vw' }) };
     const html = renderPage({
       title: `${book.title} – ${site.name}`,
       description: book.summary || `${book.title}${book.author ? ` by ${book.author}` : ''}.`,
@@ -173,7 +173,7 @@ function renderPage({ title, description, path: pagePath, body, vars, noindex = 
 function renderBookList(books, covers) {
   if (!books.length) return fill(partial('book-list-empty'), {}, partial);
   const cards = books.map((book, index) => fill(partial('book-card'), {
-    ...bookVars(book, covers.get(book.slug) ?? null, { eager: index < 4, sizes: '(min-width: 600px) 280px, 90vw' }),
+    ...bookVars(book, covers.get(book.slug) ?? null, { eager: index < 4, priority: index === 0, sizes: '(min-width: 600px) 280px, 90vw' }),
   }, partial, `card ${book.slug}`));
   return `<ul class="book-grid">\n${cards.join('\n')}\n</ul>`;
 }
@@ -183,11 +183,12 @@ function renderBookList(books, covers) {
  * max-width: 100% it can shrink but is never stretched past its real pixels.
  * @param {ReturnType<typeof normaliseBooks>[number]} book
  * @param {Awaited<ReturnType<typeof publishCover>>} cover
- * @param {{ eager: boolean, sizes: string }} options
+ * @param {{ eager: boolean, priority?: boolean, sizes: string }} options priority marks the page's main image
  */
-function bookVars(book, cover, { eager, sizes }) {
+function bookVars(book, cover, { eager, priority = false, sizes }) {
+  const loading = priority ? ' fetchpriority="high"' : eager ? '' : ' loading="lazy"';
   const image = cover
-    ? `<img class="book-cover" src="${cover.src}"${cover.srcset ? ` srcset="${cover.srcset}" sizes="${sizes}"` : ''} width="${cover.width}" height="${cover.height}" alt="${escapeHtml(book.coverAlt)}"${eager ? '' : ' loading="lazy"'} decoding="async">`
+    ? `<img class="book-cover" src="${cover.src}"${cover.srcset ? ` srcset="${cover.srcset}" sizes="${sizes}"` : ''} width="${cover.width}" height="${cover.height}" alt="${escapeHtml(book.coverAlt)}"${loading} decoding="async">`
     : `<div class="book-cover book-cover--missing" role="img" aria-label="${escapeHtml(`No cover image for ${book.title}`)}"><span>${escapeHtml(book.title)}</span></div>`;
   return {
     bookTitle: book.title,

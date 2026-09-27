@@ -30,7 +30,7 @@ As a polymath, al-Tusi made significant contributions to various fields, includi
    null,
    null,
    $seed$/img/books/shii-theology-kashf-al-murad.jpg$seed$,
-   null,
+   $seed$/img/books/shii-theology-kashf-al-murad-300.jpg$seed$,
    468,
    746,
    true,
