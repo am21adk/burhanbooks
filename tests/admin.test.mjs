@@ -67,6 +67,11 @@ test('signed out: only the sign-in form, with the reason for each refusal', asyn
   await page.getByRole('button', { name: 'Sign in' }).click();
   await page.getByText('That email and password don’t match an account.').waitFor();
 
+  await page.getByLabel('Email').fill('unconfirmed@burhanbooks.test');
+  await page.getByLabel('Password').fill('preview');
+  await page.getByRole('button', { name: 'Sign in' }).click();
+  await page.getByText('This account’s email address hasn’t been confirmed, so Supabase won’t sign it in.', { exact: false }).waitFor();
+
   await page.getByLabel('Email').fill('someone@burhanbooks.test');
   await page.getByLabel('Password').fill('preview');
   await page.getByRole('button', { name: 'Sign in' }).click();

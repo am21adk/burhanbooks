@@ -6,9 +6,11 @@
 // netlify/functions/publish.mjs, and a local "build hook" that rebuilds
 // dist/ from this stand-in, so publishing works end to end here.
 //
-// Sign-ins (password "preview" for both):
-//   admin@burhanbooks.test    the shop's admin
-//   someone@burhanbooks.test  an account that isn't the admin
+// Sign-ins (password "preview" for all three):
+//   admin@burhanbooks.test        the shop's admin
+//   someone@burhanbooks.test      an account that isn't the admin
+//   unconfirmed@burhanbooks.test  the admin's account before its email is
+//                                 confirmed, which Supabase won't sign in
 //
 // Everything resets when the preview server stops. Preview only.
 import fs from 'node:fs';
@@ -26,6 +28,7 @@ const PASSWORD = 'preview';
 const users = [
   { id: 'a0000000-0000-4000-8000-000000000001', email: 'admin@burhanbooks.test', admin: true },
   { id: 'a0000000-0000-4000-8000-000000000002', email: 'someone@burhanbooks.test', admin: false },
+  { id: 'a0000000-0000-4000-8000-000000000003', email: 'unconfirmed@burhanbooks.test', admin: true, unconfirmed: true },
 ];
 /** @type {Map<string, { userId: string, expires: number }>} */
 const accessTokens = new Map();
@@ -105,6 +108,7 @@ async function supabase(req, res, url) {
     if (url.searchParams.get('grant_type') === 'password') {
       const found = users.find((u) => u.email === String(body.email).toLowerCase());
       if (!found || body.password !== PASSWORD) { send(res, 400, { code: 400, error_code: 'invalid_credentials', msg: 'Invalid login credentials' }); return true; }
+      if (found.unconfirmed) { send(res, 400, { code: 400, error_code: 'email_not_confirmed', msg: 'Email not confirmed' }); return true; }
       send(res, 200, issue(found));
       return true;
     }

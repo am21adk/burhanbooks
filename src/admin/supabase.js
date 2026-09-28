@@ -132,6 +132,15 @@ export function createClient({ url, anonKey }) {
         body: JSON.stringify({ email, password }),
       });
       if (response.status === 400 || response.status === 401) {
+        // Supabase refuses a correct password too while the account's email
+        // is unconfirmed, and says so; that needs fixing in Supabase, not here.
+        /** @type {Record<string, unknown>} */
+        let body = {};
+        try { body = await response.json(); } catch { /* not JSON */ }
+        const reason = `${body.error_code ?? ''} ${body.msg ?? ''} ${body.error_description ?? ''}`;
+        if (/email_not_confirmed|not confirmed/i.test(reason)) {
+          throw new SupabaseError('This account’s email address hasn’t been confirmed, so Supabase won’t sign it in. In Supabase, open Authentication → Users and confirm this user, or add it again with “Auto confirm user” ticked.', { status: response.status, code: 'email_not_confirmed', kind: 'auth' });
+        }
         throw new SupabaseError('That email and password don’t match an account.', { status: response.status, kind: 'auth' });
       }
       if (response.status === 429) {
